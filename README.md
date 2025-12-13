@@ -26,6 +26,18 @@ npx playwright install --with-deps
 
 ### 3. テスト対象URLの設定
 
+#### 3-1. ベースURLの設定
+
+`config/base-url.json`を編集して、テスト対象のベースURLを設定してください。
+
+```json
+{
+  "baseUrl": "https://example.com"
+}
+```
+
+#### 3-2. テスト対象ページの設定
+
 `config/visual-test-urls.json`を編集して、テスト対象のURLを設定してください。
 
 ```json
@@ -41,12 +53,11 @@ npx playwright install --with-deps
 }
 ```
 
-### 4. GitHub Secretsの設定
+### 4. GitHub Secretsの設定（オプション）
 
-GitHubリポジトリ（ooyama91/202512_visual-test）のSettings > Secrets and variables > Actionsで以下を設定：
+Slack通知を使用する場合のみ、GitHubリポジトリ（ooyama91/202512_visual-test）のSettings > Secrets and variables > Actionsで以下を設定：
 
-- `BASE_URL`: テスト対象のベースURL（例: `https://example.com`）
-- `SLACK_WEBHOOK_URL`: Slack通知用のWebhook URL（オプション）
+- `SLACK_WEBHOOK_URL`: Slack通知用のWebhook URL
 
 **注意**: `GITHUB_TOKEN`は自動的に提供されるため、設定不要です。
 

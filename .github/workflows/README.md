@@ -11,18 +11,29 @@ E2E Visual Regression Testを実行するワークフローです。
 - `workflow_dispatch` イベント
   - 手動実行（テスト用）
 
-### 必要なGitHub Secrets
+### 必要な設定
 
-以下のSecretsをGitHubリポジトリのSettings > Secrets and variables > Actionsに設定してください：
+#### GitHub Secrets（オプション）
 
-- `BASE_URL`: テスト対象のベースURL（例: `https://example.com`）
-- `SLACK_WEBHOOK_URL`: Slack通知用のWebhook URL（オプション）
+Slack通知を使用する場合のみ、GitHubリポジトリのSettings > Secrets and variables > Actionsに設定：
+
+- `SLACK_WEBHOOK_URL`: Slack通知用のWebhook URL
+
+#### 設定ファイル
+
+- `config/base-url.json`: テスト対象のベースURLを設定
+  ```json
+  {
+    "baseUrl": "https://example.com"
+  }
+  ```
 
 ### 動作
 
 1. GitHubリポジトリ（ooyama91/202512_visual-test）から指定ブランチをチェックアウト
 2. Node.jsとPlaywrightのセットアップ
-3. Visual Regression Testを実行
+3. `config/base-url.json`からBASE_URLを読み込み
+4. Visual Regression Testを実行
    - mainブランチ: ベースラインスクリーンショットを更新
    - その他のブランチ: ベースラインと比較
 4. テスト結果をGitHub Pagesに公開

@@ -43,9 +43,16 @@ jobs:
           BRANCH="${{ github.event.client_payload.branch || github.event.inputs.branch || github.ref_name }}"
           echo "BRANCH=$BRANCH" >> $GITHUB_OUTPUT
 
+      - name: Read BASE_URL from config
+        id: base-url
+        run: |
+          BASE_URL=$(jq -r '.baseUrl' config/base-url.json)
+          echo "BASE_URL=$BASE_URL" >> $GITHUB_OUTPUT
+          echo "Using BASE_URL: $BASE_URL"
+
       - name: Run Visual Regression Tests
         env:
-          BASE_URL: ${{ secrets.BASE_URL }}
+          BASE_URL: ${{ steps.base-url.outputs.BASE_URL }}
         run: |
           # ベースラインスクリーンショットを取得（mainブランチの場合のみ更新）
           if [ "${{ steps.branch.outputs.BRANCH }}" = "main" ]; then
