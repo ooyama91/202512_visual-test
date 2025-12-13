@@ -1,0 +1,44 @@
+{
+  "pages": [
+    {
+      "path": "/",
+      "name": "top-page",
+      "description": "トップページ",
+      "viewport": ["desktop", "tablet", "mobile"]
+    },
+    {
+      "path": "/login",
+      "name": "login-page",
+      "description": "ログインページ",
+      "viewport": ["desktop"]
+    },
+    {
+      "path": "/dashboard",
+      "name": "dashboard",
+      "description": "ダッシュボード",
+      "viewport": ["desktop", "tablet"],
+      "mask": [".timestamp", ".user-name"]
+    },
+    {
+      "path": "/settings",
+      "name": "settings-page",
+      "description": "設定ページ",
+      "viewport": ["desktop"]
+    }
+  ],
+  "elements": [
+    {
+      "path": "/",
+      "selector": "header",
+      "name": "header",
+      "description": "ヘッダー要素"
+    },
+    {
+      "path": "/",
+      "selector": "footer",
+      "name": "footer",
+      "description": "フッター要素"
+    }
+  ]
+}
+

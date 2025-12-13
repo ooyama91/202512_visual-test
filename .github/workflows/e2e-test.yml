@@ -1,0 +1,143 @@
+name: E2E Visual Regression Tests
+
+on:
+  repository_dispatch:
+    types: [backlog-push]
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to test'
+        required: true
+        default: 'develop'
+
+jobs:
+  e2e-test:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.client_payload.branch || github.event.inputs.branch || github.ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+
+      - name: Get branch name
+        id: branch
+        run: |
+          BRANCH="${{ github.event.client_payload.branch || github.event.inputs.branch || github.ref_name }}"
+          echo "BRANCH=$BRANCH" >> $GITHUB_OUTPUT
+
+      - name: Run Visual Regression Tests
+        env:
+          BASE_URL: ${{ secrets.BASE_URL }}
+        run: |
+          # ベースラインスクリーンショットを取得（mainブランチの場合のみ更新）
+          if [ "${{ steps.branch.outputs.BRANCH }}" = "main" ]; then
+            echo "Updating baseline screenshots for main branch"
+            npx playwright test --grep "Visual Regression" --update-snapshots
+          else
+            echo "Running visual regression tests against baseline"
+            npx playwright test --grep "Visual Regression"
+          fi
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ steps.branch.outputs.BRANCH }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 30
+
+      - name: Upload test videos
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-videos-${{ steps.branch.outputs.BRANCH }}
+          path: test-results/
+          retention-days: 7
+
+      - name: Set test result status
+        id: test-result
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "message=E2Eテストが成功しました" >> $GITHUB_OUTPUT
+          else
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "message=E2Eテストが失敗しました" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Prepare report directory for GitHub Pages
+        if: always()
+        run: |
+          BRANCH="${{ steps.branch.outputs.BRANCH }}"
+          TIMESTAMP=$(date -u +%Y%m%d_%H%M%S)
+          
+          mkdir -p gh-pages-report
+          cp -r playwright-report/* gh-pages-report/ || true
+          
+          # テスト情報を記録
+          echo "{\"branch\": \"$BRANCH\", \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", \"run_id\": \"${{ github.run_id }}\", \"status\": \"${{ steps.test-result.outputs.status }}\"}" > gh-pages-report/metadata.json
+
+      - name: Setup Pages
+        if: always()
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact for GitHub Pages
+        if: always()
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: gh-pages-report/
+
+      - name: Deploy to GitHub Pages
+        if: always()
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Send Slack notification
+        if: always()
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_CHANNEL: '#e2e-test-results'
+          SLACK_USERNAME: 'GitHub Actions'
+          SLACK_ICON_EMOJI: ':robot_face:'
+        with:
+          status: ${{ job.status }}
+          text: |
+            E2E Visual Regression Test結果通知
+            
+            *ブランチ*: ${{ steps.branch.outputs.BRANCH }}
+            *ステータス*: ${{ steps.test-result.outputs.status }}
+            *メッセージ*: ${{ steps.test-result.outputs.message }}
+            
+            ${{ steps.test-result.outputs.status == 'success' && '✅ テスト成功' || '❌ テスト失敗' }}
+            
+            *GitHub Pages*: ${{ steps.deployment.outputs.page_url }}
+          fields: |
+            [
+              {"title": "ブランチ", "value": "${{ steps.branch.outputs.BRANCH }}", "short": true},
+              {"title": "ステータス", "value": "${{ steps.test-result.outputs.status }}", "short": true},
+              {"title": "実行時間", "value": "${{ job.duration }}", "short": true},
+              {"title": "GitHub Pages", "value": "${{ steps.deployment.outputs.page_url }}", "short": false}
+            ]
+
