@@ -140,8 +140,16 @@ jobs:
         continue-on-error: true
 
       - name: Send Slack notification
-        if: always() && secrets.SLACK_WEBHOOK_URL
+        if: always()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
+          # Slack Webhook URLが設定されていない場合はスキップ
+          if [ -z "$SLACK_WEBHOOK_URL" ] || [ "$SLACK_WEBHOOK_URL" = "" ]; then
+            echo "SLACK_WEBHOOK_URL is not set, skipping Slack notification"
+            exit 0
+          fi
+          
           BRANCH="${{ steps.branch.outputs.BRANCH }}"
           STATUS="${{ steps.test-result.outputs.status }}"
           MESSAGE="${{ steps.test-result.outputs.message }}"
@@ -185,6 +193,6 @@ jobs:
           
           curl -X POST -H 'Content-type: application/json' \
             --data "$PAYLOAD" \
-            ${{ secrets.SLACK_WEBHOOK_URL }}
+            "$SLACK_WEBHOOK_URL"
         continue-on-error: true
 
