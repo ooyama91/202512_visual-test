@@ -95,49 +95,39 @@ jobs:
             echo "message=E2Eテストが失敗しました" >> $GITHUB_OUTPUT
           fi
 
-      - name: Prepare report directory for GitHub Pages
-        if: always()
-        run: |
-          BRANCH="${{ steps.branch.outputs.BRANCH }}"
-          TIMESTAMP=$(date -u +%Y%m%d_%H%M%S)
-          
-          mkdir -p gh-pages-report
-          if [ -d "playwright-report" ] && [ "$(ls -A playwright-report)" ]; then
-            cp -r playwright-report/* gh-pages-report/
-          else
-            echo "No test report found, creating placeholder"
-            echo "<html><body><h1>Test Report</h1><p>No test results available</p></body></html>" > gh-pages-report/index.html
-          fi
-          
-          # テスト情報を記録
-          echo "{\"branch\": \"$BRANCH\", \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", \"run_id\": \"${{ github.run_id }}\", \"status\": \"${{ steps.test-result.outputs.status }}\"}" > gh-pages-report/metadata.json
-
-      - name: Check if GitHub Pages is enabled
-        id: pages-check
-        if: always()
-        run: |
-          # GitHub Pagesが有効かどうかを確認（プライベートリポジトリでは通常無効）
-          # このステップは常に成功し、後続のステップでcontinue-on-errorで処理
-          echo "pages_enabled=false" >> $GITHUB_OUTPUT
-          echo "Note: GitHub Pages may not be available for private repositories on free plan"
-
-      - name: Setup Pages
-        if: always()
-        uses: actions/configure-pages@v4
-        continue-on-error: true
-
-      - name: Upload artifact for GitHub Pages
-        if: always()
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: gh-pages-report/
-        continue-on-error: true
-
-      - name: Deploy to GitHub Pages
-        if: always()
-        id: deployment
-        uses: actions/deploy-pages@v4
-        continue-on-error: true
+      # GitHub Pages関連のステップ（プライベートリポジトリの無料プランでは利用不可のためスキップ）
+      # 将来的にGitHub Pagesを使用する場合は、以下のコメントを外して有効化してください
+      # - name: Prepare report directory for GitHub Pages
+      #   if: always()
+      #   run: |
+      #     BRANCH="${{ steps.branch.outputs.BRANCH }}"
+      #     TIMESTAMP=$(date -u +%Y%m%d_%H%M%S)
+      #     
+      #     mkdir -p gh-pages-report
+      #     if [ -d "playwright-report" ] && [ "$(ls -A playwright-report)" ]; then
+      #       cp -r playwright-report/* gh-pages-report/
+      #     else
+      #       echo "No test report found, creating placeholder"
+      #       echo "<html><body><h1>Test Report</h1><p>No test results available</p></body></html>" > gh-pages-report/index.html
+      #     fi
+      #     
+      #     # テスト情報を記録
+      #     echo "{\"branch\": \"$BRANCH\", \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", \"run_id\": \"${{ github.run_id }}\", \"status\": \"${{ steps.test-result.outputs.status }}\"}" > gh-pages-report/metadata.json
+      # 
+      # - name: Setup Pages
+      #   if: always()
+      #   uses: actions/configure-pages@v4
+      # 
+      # - name: Upload artifact for GitHub Pages
+      #   if: always()
+      #   uses: actions/upload-pages-artifact@v3
+      #   with:
+      #     path: gh-pages-report/
+      # 
+      # - name: Deploy to GitHub Pages
+      #   if: always()
+      #   id: deployment
+      #   uses: actions/deploy-pages@v4
 
       - name: Send Slack notification
         if: always()
@@ -153,7 +143,6 @@ jobs:
           BRANCH="${{ steps.branch.outputs.BRANCH }}"
           STATUS="${{ steps.test-result.outputs.status }}"
           MESSAGE="${{ steps.test-result.outputs.message }}"
-          PAGES_URL="${{ steps.deployment.outputs.page_url }}"
           WORKFLOW_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           
           if [ "$STATUS" = "success" ]; then
@@ -166,12 +155,8 @@ jobs:
             STATUS_TEXT="テスト失敗"
           fi
           
-          # GitHub Pages URLがある場合は追加
-          if [ -n "$PAGES_URL" ] && [ "$PAGES_URL" != "" ]; then
-            PAGES_FIELD=',{"title": "GitHub Pages", "value": "'"$PAGES_URL"'", "short": false}'
-          else
-            PAGES_FIELD=""
-          fi
+          # GitHub Pages URLは現在使用していないため、フィールドは追加しない
+          PAGES_FIELD=""
           
           PAYLOAD=$(cat <<EOF
           {
