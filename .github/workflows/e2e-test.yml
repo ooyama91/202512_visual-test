@@ -7,8 +7,8 @@ on:
     inputs:
       branch:
         description: 'Branch to test'
-        required: true
-        default: 'develop'
+        required: false
+        default: 'main'
 
 jobs:
   e2e-test:
