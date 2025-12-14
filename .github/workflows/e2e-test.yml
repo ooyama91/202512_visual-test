@@ -72,6 +72,7 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 30
+          if-no-files-found: ignore
 
       - name: Upload test videos
         if: failure()
@@ -80,6 +81,7 @@ jobs:
           name: test-videos-${{ steps.branch.outputs.BRANCH }}
           path: test-results/
           retention-days: 7
+          if-no-files-found: ignore
 
       - name: Set test result status
         id: test-result
@@ -100,7 +102,12 @@ jobs:
           TIMESTAMP=$(date -u +%Y%m%d_%H%M%S)
           
           mkdir -p gh-pages-report
-          cp -r playwright-report/* gh-pages-report/ || true
+          if [ -d "playwright-report" ] && [ "$(ls -A playwright-report)" ]; then
+            cp -r playwright-report/* gh-pages-report/
+          else
+            echo "No test report found, creating placeholder"
+            echo "<html><body><h1>Test Report</h1><p>No test results available</p></body></html>" > gh-pages-report/index.html
+          fi
           
           # テスト情報を記録
           echo "{\"branch\": \"$BRANCH\", \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", \"run_id\": \"${{ github.run_id }}\", \"status\": \"${{ steps.test-result.outputs.status }}\"}" > gh-pages-report/metadata.json
@@ -108,43 +115,67 @@ jobs:
       - name: Setup Pages
         if: always()
         uses: actions/configure-pages@v4
+        continue-on-error: true
 
       - name: Upload artifact for GitHub Pages
         if: always()
         uses: actions/upload-pages-artifact@v3
         with:
           path: gh-pages-report/
+        continue-on-error: true
 
       - name: Deploy to GitHub Pages
         if: always()
         id: deployment
         uses: actions/deploy-pages@v4
+        continue-on-error: true
 
       - name: Send Slack notification
-        if: always()
-        uses: rtCamp/action-slack-notify@v2
-        env:
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_CHANNEL: '#e2e-test-results'
-          SLACK_USERNAME: 'GitHub Actions'
-          SLACK_ICON_EMOJI: ':robot_face:'
-        with:
-          status: ${{ job.status }}
-          text: |
-            E2E Visual Regression Test結果通知
-            
-            *ブランチ*: ${{ steps.branch.outputs.BRANCH }}
-            *ステータス*: ${{ steps.test-result.outputs.status }}
-            *メッセージ*: ${{ steps.test-result.outputs.message }}
-            
-            ${{ steps.test-result.outputs.status == 'success' && '✅ テスト成功' || '❌ テスト失敗' }}
-            
-            *GitHub Pages*: ${{ steps.deployment.outputs.page_url }}
-          fields: |
-            [
-              {"title": "ブランチ", "value": "${{ steps.branch.outputs.BRANCH }}", "short": true},
-              {"title": "ステータス", "value": "${{ steps.test-result.outputs.status }}", "short": true},
-              {"title": "実行時間", "value": "${{ job.duration }}", "short": true},
-              {"title": "GitHub Pages", "value": "${{ steps.deployment.outputs.page_url }}", "short": false}
-            ]
+        if: always() && secrets.SLACK_WEBHOOK_URL
+        run: |
+          BRANCH="${{ steps.branch.outputs.BRANCH }}"
+          STATUS="${{ steps.test-result.outputs.status }}"
+          MESSAGE="${{ steps.test-result.outputs.message }}"
+          PAGES_URL="${{ steps.deployment.outputs.page_url }}"
+          WORKFLOW_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          
+          if [ "$STATUS" = "success" ]; then
+            COLOR="good"
+            EMOJI="✅"
+            STATUS_TEXT="テスト成功"
+          else
+            COLOR="danger"
+            EMOJI="❌"
+            STATUS_TEXT="テスト失敗"
+          fi
+          
+          # GitHub Pages URLがある場合は追加
+          if [ -n "$PAGES_URL" ] && [ "$PAGES_URL" != "" ]; then
+            PAGES_FIELD=',{"title": "GitHub Pages", "value": "'"$PAGES_URL"'", "short": false}'
+          else
+            PAGES_FIELD=""
+          fi
+          
+          PAYLOAD=$(cat <<EOF
+          {
+            "text": "${EMOJI} E2E Visual Regression Test結果通知",
+            "attachments": [{
+              "color": "${COLOR}",
+              "fields": [
+                {"title": "ブランチ", "value": "${BRANCH}", "short": true},
+                {"title": "ステータス", "value": "${STATUS_TEXT}", "short": true},
+                {"title": "メッセージ", "value": "${MESSAGE}", "short": false},
+                {"title": "ワークフロー", "value": "<${WORKFLOW_URL}|詳細を確認>", "short": false}${PAGES_FIELD}
+              ],
+              "footer": "GitHub Actions",
+              "ts": $(date +%s)
+            }]
+          }
+          EOF
+          )
+          
+          curl -X POST -H 'Content-type: application/json' \
+            --data "$PAYLOAD" \
+            ${{ secrets.SLACK_WEBHOOK_URL }}
+        continue-on-error: true
 
