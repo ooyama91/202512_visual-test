@@ -23,7 +23,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.client_payload.branch || github.event.inputs.branch || github.ref }}
+          ref: ${{ github.event.client_payload.branch || github.event.inputs.branch || github.ref_name || 'main' }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -32,7 +32,14 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          echo "Checking package.json and package-lock.json..."
+          ls -la package.json package-lock.json || true
+          echo "Running npm ci..."
+          npm ci || {
+            echo "npm ci failed, trying npm install..."
+            npm install
+          }
 
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
@@ -40,8 +47,9 @@ jobs:
       - name: Get branch name
         id: branch
         run: |
-          BRANCH="${{ github.event.client_payload.branch || github.event.inputs.branch || github.ref_name }}"
+          BRANCH="${{ github.event.client_payload.branch || github.event.inputs.branch || github.ref_name || 'main' }}"
           echo "BRANCH=$BRANCH" >> $GITHUB_OUTPUT
+          echo "Using branch: $BRANCH"
 
       - name: Read BASE_URL from config
         id: base-url
