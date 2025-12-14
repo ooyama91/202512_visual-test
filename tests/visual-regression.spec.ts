@@ -15,8 +15,9 @@ test.describe('Visual Regression Tests', () => {
     viewports.forEach((viewport) => {
       test(`${pageConfig.description} - ${viewport}`, async ({ page }) => {
         await page.setViewportSize(viewportSizes[viewport as keyof typeof viewportSizes]);
-        await page.goto(pageConfig.path);
-        await page.waitForLoadState('networkidle');
+        await page.goto(pageConfig.path, { waitUntil: 'load' });
+        // ページが安定するまで少し待機
+        await page.waitForTimeout(1000);
         
         // マスク処理が必要な場合
         const maskSelectors = pageConfig.mask || [];
@@ -32,10 +33,12 @@ test.describe('Visual Regression Tests', () => {
   // 要素単位のテスト
   testUrls.elements.forEach((elementConfig) => {
     test(`${elementConfig.description}の見た目が変わっていないか`, async ({ page }) => {
-      await page.goto(elementConfig.path);
-      await page.waitForLoadState('networkidle');
-      
+      await page.goto(elementConfig.path, { waitUntil: 'load' });
+      // 要素が表示されるまで待機
       const element = page.locator(elementConfig.selector);
+      await element.waitFor({ state: 'visible' });
+      await page.waitForTimeout(500);
+      
       await expect(element).toHaveScreenshot(`${elementConfig.name}.png`);
     });
   });
