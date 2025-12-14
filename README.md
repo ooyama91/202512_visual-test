@@ -64,8 +64,18 @@ Slack通知を使用する場合のみ、GitHubリポジトリ（ooyama91/202512
 ### 5. GitHub Pagesの設定（オプション）
 
 **注意**: 無料プランでは、プライベートリポジトリではGitHub Pagesは利用できません。
-- パブリックリポジトリの場合: Settings > Pagesで「Source: GitHub Actions」を選択
-- プライベートリポジトリの場合: GitHub Pagesはスキップされ、テスト結果はArtifactsとして保存されます
+
+#### テスト結果の確認方法
+
+1. **Artifactsから確認（推奨）**
+   - GitHub Actionsのワークフロー実行ページから「Artifacts」セクションを確認
+   - `playwright-report-{ブランチ名}`をダウンロード
+   - ダウンロードしたフォルダ内の`index.html`をブラウザで開く
+
+2. **GitHub Pagesから確認（オプション）**
+   - パブリックリポジトリの場合: Settings > Pagesで「Source: GitHub Actions」を選択
+   - プライベートリポジトリの場合: GitHub Pro以上が必要
+   - またはリポジトリをパブリックにする（無料で利用可能）
 
 GitHub Pagesが利用できない場合でも、ワークフローは正常に動作し、テスト結果はGitHub ActionsのArtifactsからダウンロードできます。
 

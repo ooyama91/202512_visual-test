@@ -36,12 +36,18 @@ Slack通知を使用する場合のみ、GitHubリポジトリのSettings > Secr
 4. Visual Regression Testを実行
    - mainブランチ: ベースラインスクリーンショットを更新
    - その他のブランチ: ベースラインと比較
-4. テスト結果をGitHub Pagesに公開
-5. Slackにテスト結果とGitHub PagesのURLを通知
+5. テスト結果をArtifactsとして保存（GitHub ActionsのUIからダウンロード可能）
+6. テスト結果をGitHub Pagesに公開（オプション、有効化されている場合のみ）
+7. Slackにテスト結果を通知（オプション、設定されている場合のみ）
 
-### GitHub Pagesの設定
+### テスト結果の確認方法
 
-リポジトリのSettings > Pagesで以下を設定してください：
+#### Artifactsから確認（推奨）
+- GitHub Actionsのワークフロー実行ページから「Artifacts」セクションを確認
+- `playwright-report-{ブランチ名}`をダウンロードして、ローカルで`index.html`を開く
 
-- Source: GitHub Actions
+#### GitHub Pagesから確認（オプション）
+- プライベートリポジトリの場合、GitHub Pro以上が必要
+- またはリポジトリをパブリックにする必要がある
+- リポジトリのSettings > Pagesで「Source: GitHub Actions」を設定
 
