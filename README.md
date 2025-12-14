@@ -61,11 +61,13 @@ Slack通知を使用する場合のみ、GitHubリポジトリ（ooyama91/202512
 
 **注意**: `GITHUB_TOKEN`は自動的に提供されるため、設定不要です。
 
-### 5. GitHub Pagesの設定
+### 5. GitHub Pagesの設定（オプション）
 
-リポジトリのSettings > Pagesで以下を設定：
+**注意**: 無料プランでは、プライベートリポジトリではGitHub Pagesは利用できません。
+- パブリックリポジトリの場合: Settings > Pagesで「Source: GitHub Actions」を選択
+- プライベートリポジトリの場合: GitHub Pagesはスキップされ、テスト結果はArtifactsとして保存されます
 
-- Source: GitHub Actions
+GitHub Pagesが利用できない場合でも、ワークフローは正常に動作し、テスト結果はGitHub ActionsのArtifactsからダウンロードできます。
 
 ## ローカルでのテスト実行
 
