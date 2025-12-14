@@ -7,22 +7,16 @@
       "viewport": ["desktop", "tablet", "mobile"]
     },
     {
-      "path": "/login",
-      "name": "login-page",
-      "description": "ログインページ",
-      "viewport": ["desktop"]
-    },
-    {
-      "path": "/dashboard",
-      "name": "dashboard",
-      "description": "ダッシュボード",
+      "path": "/d/",
+      "name": "d-top",
+      "description": "歯科トップ",
       "viewport": ["desktop", "tablet"],
       "mask": [".timestamp", ".user-name"]
     },
     {
-      "path": "/settings",
-      "name": "settings-page",
-      "description": "設定ページ",
+      "path": "/d/column-d/",
+      "name": "column-d",
+      "description": "コラム（歯科）",
       "viewport": ["desktop"]
     }
   ],
