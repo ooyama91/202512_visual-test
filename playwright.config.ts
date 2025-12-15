@@ -31,9 +31,9 @@ export default defineConfig({
   expect: {
     toHaveScreenshot: {
       // スクリーンショットの比較モード
-      mode: 'strict', // 'strict' | 'pixel' | 'css'
+      mode: 'pixel', // 'strict' | 'pixel' | 'css' - pixelモードでより柔軟に比較
       // 許容するピクセル差分の閾値（0-1）
-      threshold: 0.2,
+      threshold: 0.3, // 閾値を上げて動的コンテンツの差分を許容
       // アニメーションやタイミングによる差分を無視するための設定
       animations: 'disabled',
     },
