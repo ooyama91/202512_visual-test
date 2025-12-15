@@ -48,7 +48,7 @@ test.describe('Visual Regression Tests', () => {
 
   // 要素単位のテスト
   testUrls.elements.forEach((elementConfig) => {
-    test(`${elementConfig.description}の見た目が変わっていないか`, async ({ page, testInfo }) => {
+    test(`${elementConfig.description}の見た目が変わっていないか`, async ({ page }) => {
       await page.goto(elementConfig.path, { waitUntil: 'load' });
       await page.waitForTimeout(1000);
       
@@ -57,7 +57,7 @@ test.describe('Visual Regression Tests', () => {
       const count = await element.count();
       
       if (count === 0) {
-        testInfo.skip(true, `Element "${elementConfig.selector}" not found on page`);
+        test.info().skip(true, `Element "${elementConfig.selector}" not found on page`);
         return;
       }
       
@@ -66,7 +66,7 @@ test.describe('Visual Regression Tests', () => {
         await element.first().waitFor({ state: 'visible', timeout: 10000 });
       } catch (e) {
         // 要素が見つからない場合はスキップ
-        testInfo.skip(true, `Element "${elementConfig.selector}" not visible within timeout`);
+        test.info().skip(true, `Element "${elementConfig.selector}" not visible within timeout`);
         return;
       }
       
