@@ -82,6 +82,10 @@ jobs:
 
       - name: Update baseline screenshots
         if: always() && steps.branch.outputs.BRANCH == 'main'
+        env:
+          BASE_URL: ${{ steps.base-url.outputs.BASE_URL }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          BASELINE_COMMIT: ${{ steps.baseline.outputs.BASELINE_COMMIT }}
         run: |
           # テスト結果に関わらず、常に新しいスクリーンショットをbaselineとして更新
           echo "Updating baseline screenshots for next run (regardless of test result)..."
