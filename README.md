@@ -139,6 +139,22 @@ npm run report
 
 ## ワークフローのトリガー
 
+### Cloudflare Workersから実行
+
+Cloudflare Workersのエンドポイントにアクセスすることで、テストを実行できます。
+
+**エンドポイントURL:**
+```
+https://202512visual-test.account-047.workers.dev/run-test
+```
+
+**実行方法:**
+- **ブラウザから**: 上記URLをブラウザで開く（GETリクエスト）
+- **curlから**: `curl https://202512visual-test.account-047.workers.dev/run-test`
+- **Backlogのwebhookから**: Backlogのwebhook設定で上記URLを送信先に指定
+
+**注意**: `/run-test` 以外のパス（例: `/` や `/favicon.ico`）にアクセスしてもテストは実行されません。
+
 ### Backlogのwebhookから
 
 Backlogのwebhookを設定して、GitHub APIの`repository_dispatch`イベントをトリガーします。
@@ -155,6 +171,8 @@ curl -X POST \
     }
   }'
 ```
+
+**推奨**: Backlogのwebhook送信先は、Cloudflare Workersの `/run-test` エンドポイントを指定してください。
 
 ### 手動実行
 

@@ -213,6 +213,18 @@ on:
 - 対象ブランチ（例: main）を決定
 - GitHubの`POST /repos/{owner}/{repo}/dispatches`を呼び出し、`event_type: backlog-push` と `client_payload.branch` を渡す
 
+**Cloudflare WorkersエンドポイントURL:**
+```
+https://202512visual-test.account-047.workers.dev/run-test
+```
+
+**使用方法:**
+- **ブラウザから手動実行**: 上記URLをブラウザで開く（GETリクエスト）
+- **curlから実行**: `curl https://202512visual-test.account-047.workers.dev/run-test`
+- **Backlogのwebhook送信先**: Backlogのwebhook設定で上記URLを指定
+
+**注意**: `/run-test` パスにアクセスした時のみテストが実行されます。それ以外のパス（例: `/` や `/favicon.ico`）ではテストは実行されません。
+
 #### 1-3. 中間サービス実装例（方法A）
 ```javascript
 // サーバーレス関数（例: Vercel/Netlify Functions）

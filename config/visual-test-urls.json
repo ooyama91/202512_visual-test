@@ -1,20 +1,20 @@
 {
   "pages": [
     {
-      "path": "/weather/",
+      "path": "/",
       "name": "top-page",
       "description": "トップページ",
       "viewport": ["desktop", "tablet", "mobile"]
     },
     {
-      "path": "/weather/jp/warn/",
-      "name": "warn",
-      "description": "警報・注意報",
+      "path": "/week/",
+      "name": "week",
+      "description": "週間天気",
       "viewport": ["desktop", "tablet"],
       "mask": [".timestamp", ".user-name"]
     },
     {
-      "path": "/weather/promo/column/",
+      "path": "/promo/column/",
       "name": "column",
       "description": "お天気コラム",
       "viewport": ["desktop"]
