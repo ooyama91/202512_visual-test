@@ -115,39 +115,38 @@ jobs:
             echo "message=E2Eテストが失敗しました" >> $GITHUB_OUTPUT
           fi
 
-      # GitHub Pages関連のステップ（プライベートリポジトリの無料プランでは利用不可のためスキップ）
-      # 将来的にGitHub Pagesを使用する場合は、以下のコメントを外して有効化してください
-      # - name: Prepare report directory for GitHub Pages
-      #   if: always()
-      #   run: |
-      #     BRANCH="${{ steps.branch.outputs.BRANCH }}"
-      #     TIMESTAMP=$(date -u +%Y%m%d_%H%M%S)
-      #     
-      #     mkdir -p gh-pages-report
-      #     if [ -d "playwright-report" ] && [ "$(ls -A playwright-report)" ]; then
-      #       cp -r playwright-report/* gh-pages-report/
-      #     else
-      #       echo "No test report found, creating placeholder"
-      #       echo "<html><body><h1>Test Report</h1><p>No test results available</p></body></html>" > gh-pages-report/index.html
-      #     fi
-      #     
-      #     # テスト情報を記録
-      #     echo "{\"branch\": \"$BRANCH\", \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", \"run_id\": \"${{ github.run_id }}\", \"status\": \"${{ steps.test-result.outputs.status }}\"}" > gh-pages-report/metadata.json
-      # 
-      # - name: Setup Pages
-      #   if: always()
-      #   uses: actions/configure-pages@v4
-      # 
-      # - name: Upload artifact for GitHub Pages
-      #   if: always()
-      #   uses: actions/upload-pages-artifact@v3
-      #   with:
-      #     path: gh-pages-report/
-      # 
-      # - name: Deploy to GitHub Pages
-      #   if: always()
-      #   id: deployment
-      #   uses: actions/deploy-pages@v4
+      # GitHub Pages関連のステップ
+      - name: Prepare report directory for GitHub Pages
+        if: always()
+        run: |
+          BRANCH="${{ steps.branch.outputs.BRANCH }}"
+          TIMESTAMP=$(date -u +%Y%m%d_%H%M%S)
+          
+          mkdir -p gh-pages-report
+          if [ -d "playwright-report" ] && [ "$(ls -A playwright-report)" ]; then
+            cp -r playwright-report/* gh-pages-report/
+          else
+            echo "No test report found, creating placeholder"
+            echo "<html><body><h1>Test Report</h1><p>No test results available</p></body></html>" > gh-pages-report/index.html
+          fi
+          
+          # テスト情報を記録
+          echo "{\"branch\": \"$BRANCH\", \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", \"run_id\": \"${{ github.run_id }}\", \"status\": \"${{ steps.test-result.outputs.status }}\"}" > gh-pages-report/metadata.json
+
+      - name: Setup Pages
+        if: always()
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact for GitHub Pages
+        if: always()
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: gh-pages-report/
+
+      - name: Deploy to GitHub Pages
+        if: always()
+        id: deployment
+        uses: actions/deploy-pages@v4
 
       - name: Send Slack notification
         if: always()
