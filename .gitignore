@@ -7,9 +7,11 @@ test-results/
 playwright-report/
 playwright/.cache/
 
-# Screenshots
+# Screenshots (baseline screenshots are tracked in Git)
 *.png
 !config/
+!tests/**/*.png
+!tests/**/*-snapshots/**
 
 # Environment variables
 .env
