@@ -14,16 +14,39 @@ test.describe('Visual Regression Tests', () => {
     
     viewports.forEach((viewport) => {
       test(`${pageConfig.description} - ${viewport}`, async ({ page }, testInfo) => {
-        // レポートにベースライン情報を表示
+        // レポートにベースライン情報と現在のテスト情報を表示
         if (process.env.GITHUB_SHA) {
+          const currentCommit = process.env.GITHUB_SHA.slice(0, 7);
+          const currentDate = new Date().toISOString();
+          const branch = process.env.GITHUB_REF_NAME || 'unknown';
+          const isMainBranch = branch === 'main';
+          
+          // ベースライン情報（mainブランチの場合は更新中、それ以外はmainブランチのベースラインと比較）
+          if (isMainBranch) {
+            testInfo.annotations.push({
+              type: 'Baseline Info',
+              description: `Updating baseline from Commit: ${currentCommit} (Date: ${currentDate})`,
+            });
+          } else {
+            testInfo.annotations.push({
+              type: 'Baseline Info',
+              description: `Comparing against baseline from main branch (Commit: ${process.env.BASELINE_COMMIT || 'latest'})`,
+            });
+          }
+          
+          // 現在のテスト実行情報
           testInfo.annotations.push({
-            type: 'Baseline Info',
-            description: `Comparing against Commit: ${process.env.GITHUB_SHA.slice(0, 7)} (Date: ${new Date().toISOString()})`,
+            type: 'Current Test',
+            description: `Test Commit: ${currentCommit} | Branch: ${branch} | Date: ${currentDate}`,
           });
         } else {
           testInfo.annotations.push({
             type: 'Local Run',
             description: 'Comparing against local baseline image',
+          });
+          testInfo.annotations.push({
+            type: 'Current Test',
+            description: `Local execution at ${new Date().toISOString()}`,
           });
         }
 
@@ -62,16 +85,39 @@ test.describe('Visual Regression Tests', () => {
   // 要素単位のテスト
   testUrls.elements.forEach((elementConfig) => {
     test(`${elementConfig.description}の見た目が変わっていないか`, async ({ page }, testInfo) => {
-      // レポートにベースライン情報を表示
+      // レポートにベースライン情報と現在のテスト情報を表示
       if (process.env.GITHUB_SHA) {
+        const currentCommit = process.env.GITHUB_SHA.slice(0, 7);
+        const currentDate = new Date().toISOString();
+        const branch = process.env.GITHUB_REF_NAME || 'unknown';
+        const isMainBranch = branch === 'main';
+        
+        // ベースライン情報（mainブランチの場合は更新中、それ以外はmainブランチのベースラインと比較）
+        if (isMainBranch) {
+          testInfo.annotations.push({
+            type: 'Baseline Info',
+            description: `Updating baseline from Commit: ${currentCommit} (Date: ${currentDate})`,
+          });
+        } else {
+          testInfo.annotations.push({
+            type: 'Baseline Info',
+            description: `Comparing against baseline from main branch (Commit: ${process.env.BASELINE_COMMIT || 'latest'})`,
+          });
+        }
+        
+        // 現在のテスト実行情報
         testInfo.annotations.push({
-          type: 'Baseline Info',
-          description: `Comparing against Commit: ${process.env.GITHUB_SHA.slice(0, 7)} (Date: ${new Date().toISOString()})`,
+          type: 'Current Test',
+          description: `Test Commit: ${currentCommit} | Branch: ${branch} | Date: ${currentDate}`,
         });
       } else {
         testInfo.annotations.push({
           type: 'Local Run',
           description: 'Comparing against local baseline image',
+        });
+        testInfo.annotations.push({
+          type: 'Current Test',
+          description: `Local execution at ${new Date().toISOString()}`,
         });
       }
 

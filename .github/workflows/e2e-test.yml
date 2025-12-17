@@ -59,9 +59,20 @@ jobs:
           echo "BASE_URL=$BASE_URL" >> $GITHUB_OUTPUT
           echo "Using BASE_URL: $BASE_URL"
 
+      - name: Get baseline commit info
+        id: baseline
+        if: steps.branch.outputs.BRANCH != 'main'
+        run: |
+          # mainブランチの最新コミットを取得（ベースラインとして使用）
+          BASELINE_COMMIT=$(git ls-remote origin main | cut -f1 | head -c 7 || echo "unknown")
+          echo "BASELINE_COMMIT=$BASELINE_COMMIT" >> $GITHUB_OUTPUT
+          echo "Baseline commit: $BASELINE_COMMIT"
+
       - name: Run Visual Regression Tests
         env:
           BASE_URL: ${{ steps.base-url.outputs.BASE_URL }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          BASELINE_COMMIT: ${{ steps.baseline.outputs.BASELINE_COMMIT }}
         run: |
           # ベースラインスクリーンショットを取得（mainブランチの場合のみ更新）
           if [ "${{ steps.branch.outputs.BRANCH }}" = "main" ]; then
