@@ -186,26 +186,32 @@ Backlog Gitリポジトリのプッシュイベントをwebhookで検知し、Gi
 4. イベントタイプを選択：
    - `push` イベント（develop/mainブランチのプッシュを検知）
 
-#### 1-2. GitHub Actionsへの連携方法
-Backlogのwebhookを直接GitHub Actionsに送ることはできないため、以下のいずれかの方法を採用：
+#### 1-2. GitHub Actionsへの連携方法（Cloudflare Workers経由）
+Backlogのwebhookを直接GitHub Actionsに送るのではなく、**Cloudflare Workersを中間サービスとして採用**する。
 
-**方法A: 中間サービス経由（安定）**
-- Backlog → 中間サービス（サーバーレス関数等）→ GitHub `repository_dispatch` API
-- 中間サービスでwebhookペイロードを変換し、GitHub APIを呼び出し
+**採用方針**
+- Backlog → Cloudflare Workers（中継）→ GitHub `repository_dispatch` API
+- Workers側でwebhookペイロードを受信し、必要に応じてブランチ判定などを行った上でGitHub APIを呼び出す
 
-**方法B: GitHub Actionsの`repository_dispatch`イベントを利用（まずは試したい）**
-- よりシンプルな実装で、まずはこの方法を試す
-- GitHub APIを直接呼び出すことで、中間サービスを不要にする
+**GitHub Actions側の設定（既存）**
 ```yaml
 # .github/workflows/e2e-test.yml
 on:
   repository_dispatch:
     types: [backlog-push]
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to test'
+        required: false
+        default: 'main'
 ```
 
-**方法C: 代替案 - GitHubリポジトリをミラー**
-- BacklogリポジトリをGitHubにミラーリング
-- GitHub側で`push`イベントを直接トリガーとして使用
+**Cloudflare Workers側の役割**
+- BacklogからのHTTPリクエスト（Webhook）を受信
+- 必要なら署名検証などで送信元を検証
+- 対象ブランチ（例: main）を決定
+- GitHubの`POST /repos/{owner}/{repo}/dispatches`を呼び出し、`event_type: backlog-push` と `client_payload.branch` を渡す
 
 #### 1-3. 中間サービス実装例（方法A）
 ```javascript

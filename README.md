@@ -55,7 +55,7 @@ npx playwright install --with-deps
 
 ### 4. GitHub Secretsの設定（オプション）
 
-Slack通知を使用する場合のみ、GitHubリポジトリ（ooyama91/202512_visual-test）のSettings > Secrets and variables > Actionsで以下を設定：
+Slack通知を使用する場合のみ、GitHubリポジトリ（m-g-n/visual-test）のSettings > Secrets and variables > Actionsで以下を設定：
 
 - `SLACK_WEBHOOK_URL`: Slack通知用のWebhook URL
 
