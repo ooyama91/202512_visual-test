@@ -7,16 +7,16 @@
       "viewport": ["desktop", "tablet", "mobile"]
     },
     {
-      "path": "/d/",
-      "name": "d-top",
-      "description": "歯科トップ",
+      "path": "/jp/warn/",
+      "name": "warn",
+      "description": "警報・注意報",
       "viewport": ["desktop", "tablet"],
       "mask": [".timestamp", ".user-name"]
     },
     {
-      "path": "/d/column-d/",
-      "name": "column-d",
-      "description": "コラム（歯科）",
+      "path": "/promo/column/",
+      "name": "column",
+      "description": "お天気コラム",
       "viewport": ["desktop"]
     }
   ],
