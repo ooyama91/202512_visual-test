@@ -78,6 +78,16 @@ test.describe('Visual Regression Tests', () => {
           maxDiffPixels: 2000, // 許容するピクセル差分をさらに増やす
           animations: 'disabled', // アニメーションを無効化
         });
+        
+        // 成功時でもスクリーンショットをレポートに添付
+        const screenshot = await page.screenshot({
+          mask: maskLocators.length > 0 ? maskLocators : undefined,
+          fullPage: true,
+        });
+        await testInfo.attach(`${pageConfig.name}-${viewport}-actual.png`, {
+          body: screenshot,
+          contentType: 'image/png',
+        });
       });
     });
   });
@@ -147,6 +157,13 @@ test.describe('Visual Regression Tests', () => {
       await expect(element.first()).toHaveScreenshot(`${elementConfig.name}.png`, {
         timeout: 10000,
         maxDiffPixels: 500,
+      });
+      
+      // 成功時でもスクリーンショットをレポートに添付
+      const elementScreenshot = await element.first().screenshot();
+      await testInfo.attach(`${elementConfig.name}-actual.png`, {
+        body: elementScreenshot,
+        contentType: 'image/png',
       });
     });
   });
