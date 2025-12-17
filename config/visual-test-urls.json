@@ -1,20 +1,20 @@
 {
   "pages": [
     {
-      "path": "/",
+      "path": "/weather/",
       "name": "top-page",
       "description": "トップページ",
       "viewport": ["desktop", "tablet", "mobile"]
     },
     {
-      "path": "/week/",
+      "path": "/weather/week/",
       "name": "week",
       "description": "週間天気",
       "viewport": ["desktop", "tablet"],
       "mask": [".timestamp", ".user-name"]
     },
     {
-      "path": "/promo/column/",
+      "path": "/weather/promo/column/",
       "name": "column",
       "description": "お天気コラム",
       "viewport": ["desktop"]
@@ -22,13 +22,13 @@
   ],
   "elements": [
     {
-      "path": "/",
+      "path": "/weather/",
       "selector": "header",
       "name": "header",
       "description": "ヘッダー要素"
     },
     {
-      "path": "/",
+      "path": "/weather/",
       "selector": "footer",
       "name": "footer",
       "description": "フッター要素"
