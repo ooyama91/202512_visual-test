@@ -25,6 +25,7 @@ jobs:
         with:
           ref: ${{ github.event.client_payload.branch || github.event.inputs.branch || github.ref_name || 'main' }}
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -68,6 +69,12 @@ jobs:
           echo "BASELINE_COMMIT=$BASELINE_COMMIT" >> $GITHUB_OUTPUT
           echo "Baseline commit: $BASELINE_COMMIT"
 
+      - name: Pull latest baseline metadata
+        if: steps.branch.outputs.BRANCH == 'main'
+        run: |
+          # 最新のbaselineメタデータを取得（前回のテスト実行で作成されたもの）
+          git pull origin main || echo "No updates to pull"
+          
       - name: Run Visual Regression Tests
         id: test-run
         env:
@@ -77,6 +84,13 @@ jobs:
         run: |
           # 前回のテスト結果をbaselineとして比較（差分があっても記録する）
           echo "Running visual regression tests against baseline from previous run"
+          # baselineメタデータの存在を確認
+          if [ -f "tests/baseline-metadata.json" ]; then
+            echo "Baseline metadata found:"
+            cat tests/baseline-metadata.json
+          else
+            echo "No baseline metadata found (first run)"
+          fi
           npx playwright test --grep "Visual Regression" || true
           # テスト結果に関わらず続行（差分があってもbaselineを更新する方針）
 
@@ -107,14 +121,18 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           
-          # baselineスクリーンショットの変更を確認
-          if git diff --quiet tests/; then
-            echo "No baseline screenshot changes to commit"
+          # baselineスクリーンショットとメタデータの変更を確認
+          git add tests/**/*-snapshots/**/*.png tests/baseline-metadata.json || true
+          
+          if git diff --staged --quiet; then
+            echo "No baseline screenshot or metadata changes to commit"
           else
             echo "Committing updated baseline screenshots and metadata..."
-            git add tests/**/*-snapshots/**/*.png tests/baseline-metadata.json || true
+            echo "Baseline metadata content:"
+            cat tests/baseline-metadata.json
             git commit -m "Update baseline screenshots from test run ${{ github.run_id }} [skip ci]" || echo "No changes to commit"
             git push origin main || echo "Push failed or no changes"
+            echo "Baseline metadata committed and pushed"
           fi
 
       - name: Upload test results
