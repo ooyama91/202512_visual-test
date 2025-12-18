@@ -12,6 +12,7 @@ playwright/.cache/
 !config/
 !tests/**/*.png
 !tests/**/*-snapshots/**
+!tests/baseline-metadata.json
 
 # Environment variables
 .env

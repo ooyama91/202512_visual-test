@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
 import testUrls from '../config/visual-test-urls.json';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const viewportSizes = {
   desktop: { width: 1920, height: 1080 },
@@ -14,39 +16,66 @@ test.describe('Visual Regression Tests', () => {
     
     viewports.forEach((viewport) => {
       test(`${pageConfig.description} - ${viewport}`, async ({ page }, testInfo) => {
+        // 画像取得時刻を記録（スクリーンショット撮影前）
+        const screenshotTimestamp = new Date().toISOString();
+        
+        // ベースラインメタデータを読み込む
+        let baselineInfo = null;
+        const metadataPath = path.join(__dirname, 'baseline-metadata.json');
+        if (fs.existsSync(metadataPath)) {
+          try {
+            const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'));
+            baselineInfo = {
+              commit: metadata.commit || 'unknown',
+              timestamp: metadata.timestamp || 'unknown',
+              runId: metadata.run_id || 'unknown',
+            };
+          } catch (e) {
+            console.warn('Failed to read baseline metadata:', e);
+          }
+        }
+        
         // レポートにベースライン情報と現在のテスト情報を表示
         if (process.env.GITHUB_SHA) {
           const currentCommit = process.env.GITHUB_SHA.slice(0, 7);
-          const currentDate = new Date().toISOString();
           const branch = process.env.GITHUB_REF_NAME || 'unknown';
           const isMainBranch = branch === 'main';
           
-          // ベースライン情報（mainブランチの場合は更新中、それ以外はmainブランチのベースラインと比較）
-          if (isMainBranch) {
+          // ベースライン情報
+          if (baselineInfo) {
             testInfo.annotations.push({
               type: 'Baseline Info',
-              description: `Updating baseline from Commit: ${currentCommit} (Date: ${currentDate})`,
+              description: `Baseline from Commit: ${baselineInfo.commit} | Captured: ${baselineInfo.timestamp} | Run: ${baselineInfo.runId}`,
             });
           } else {
             testInfo.annotations.push({
               type: 'Baseline Info',
-              description: `Comparing against baseline from main branch (Commit: ${process.env.BASELINE_COMMIT || 'latest'})`,
+              description: isMainBranch 
+                ? 'Creating new baseline (first run)'
+                : `Comparing against baseline from main branch (Commit: ${process.env.BASELINE_COMMIT || 'latest'})`,
             });
           }
           
-          // 現在のテスト実行情報
+          // 現在のテスト実行情報（画像取得時刻を使用）
           testInfo.annotations.push({
             type: 'Current Test',
-            description: `Test Commit: ${currentCommit} | Branch: ${branch} | Date: ${currentDate}`,
+            description: `Test Commit: ${currentCommit} | Branch: ${branch} | Screenshot captured: ${screenshotTimestamp}`,
           });
         } else {
-          testInfo.annotations.push({
-            type: 'Local Run',
-            description: 'Comparing against local baseline image',
-          });
+          if (baselineInfo) {
+            testInfo.annotations.push({
+              type: 'Baseline Info',
+              description: `Baseline from ${baselineInfo.timestamp} (Run: ${baselineInfo.runId})`,
+            });
+          } else {
+            testInfo.annotations.push({
+              type: 'Baseline Info',
+              description: 'Comparing against local baseline image',
+            });
+          }
           testInfo.annotations.push({
             type: 'Current Test',
-            description: `Local execution at ${new Date().toISOString()}`,
+            description: `Screenshot captured: ${screenshotTimestamp}`,
           });
         }
 
@@ -94,42 +123,69 @@ test.describe('Visual Regression Tests', () => {
 
   // 要素単位のテスト
   testUrls.elements.forEach((elementConfig) => {
-    test(`${elementConfig.description}の見た目が変わっていないか`, async ({ page }, testInfo) => {
-      // レポートにベースライン情報と現在のテスト情報を表示
-      if (process.env.GITHUB_SHA) {
-        const currentCommit = process.env.GITHUB_SHA.slice(0, 7);
-        const currentDate = new Date().toISOString();
-        const branch = process.env.GITHUB_REF_NAME || 'unknown';
-        const isMainBranch = branch === 'main';
+      test(`${elementConfig.description}の見た目が変わっていないか`, async ({ page }, testInfo) => {
+        // 画像取得時刻を記録（スクリーンショット撮影前）
+        const screenshotTimestamp = new Date().toISOString();
         
-        // ベースライン情報（mainブランチの場合は更新中、それ以外はmainブランチのベースラインと比較）
-        if (isMainBranch) {
-          testInfo.annotations.push({
-            type: 'Baseline Info',
-            description: `Updating baseline from Commit: ${currentCommit} (Date: ${currentDate})`,
-          });
-        } else {
-          testInfo.annotations.push({
-            type: 'Baseline Info',
-            description: `Comparing against baseline from main branch (Commit: ${process.env.BASELINE_COMMIT || 'latest'})`,
-          });
+        // ベースラインメタデータを読み込む
+        let baselineInfo = null;
+        const metadataPath = path.join(__dirname, 'baseline-metadata.json');
+        if (fs.existsSync(metadataPath)) {
+          try {
+            const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'));
+            baselineInfo = {
+              commit: metadata.commit || 'unknown',
+              timestamp: metadata.timestamp || 'unknown',
+              runId: metadata.run_id || 'unknown',
+            };
+          } catch (e) {
+            console.warn('Failed to read baseline metadata:', e);
+          }
         }
         
-        // 現在のテスト実行情報
-        testInfo.annotations.push({
-          type: 'Current Test',
-          description: `Test Commit: ${currentCommit} | Branch: ${branch} | Date: ${currentDate}`,
-        });
-      } else {
-        testInfo.annotations.push({
-          type: 'Local Run',
-          description: 'Comparing against local baseline image',
-        });
-        testInfo.annotations.push({
-          type: 'Current Test',
-          description: `Local execution at ${new Date().toISOString()}`,
-        });
-      }
+        // レポートにベースライン情報と現在のテスト情報を表示
+        if (process.env.GITHUB_SHA) {
+          const currentCommit = process.env.GITHUB_SHA.slice(0, 7);
+          const branch = process.env.GITHUB_REF_NAME || 'unknown';
+          const isMainBranch = branch === 'main';
+          
+          // ベースライン情報
+          if (baselineInfo) {
+            testInfo.annotations.push({
+              type: 'Baseline Info',
+              description: `Baseline from Commit: ${baselineInfo.commit} | Captured: ${baselineInfo.timestamp} | Run: ${baselineInfo.runId}`,
+            });
+          } else {
+            testInfo.annotations.push({
+              type: 'Baseline Info',
+              description: isMainBranch 
+                ? 'Creating new baseline (first run)'
+                : `Comparing against baseline from main branch (Commit: ${process.env.BASELINE_COMMIT || 'latest'})`,
+            });
+          }
+          
+          // 現在のテスト実行情報（画像取得時刻を使用）
+          testInfo.annotations.push({
+            type: 'Current Test',
+            description: `Test Commit: ${currentCommit} | Branch: ${branch} | Screenshot captured: ${screenshotTimestamp}`,
+          });
+        } else {
+          if (baselineInfo) {
+            testInfo.annotations.push({
+              type: 'Baseline Info',
+              description: `Baseline from ${baselineInfo.timestamp} (Run: ${baselineInfo.runId})`,
+            });
+          } else {
+            testInfo.annotations.push({
+              type: 'Baseline Info',
+              description: 'Comparing against local baseline image',
+            });
+          }
+          testInfo.annotations.push({
+            type: 'Current Test',
+            description: `Screenshot captured: ${screenshotTimestamp}`,
+          });
+        }
 
       await page.goto(elementConfig.path, { waitUntil: 'load' });
       await page.waitForTimeout(1000);

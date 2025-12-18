@@ -91,7 +91,19 @@ jobs:
           echo "Updating baseline screenshots for next run (regardless of test result)..."
           npx playwright test --grep "Visual Regression" --update-snapshots
           
-          # 更新されたbaselineスクリーンショットをGitにコミット
+          # baselineメタデータを作成（次回のテストでbaseline情報を表示するため）
+          BASELINE_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          BASELINE_COMMIT_SHORT=$(echo "${{ github.sha }}" | head -c 7)
+          mkdir -p tests
+          cat > tests/baseline-metadata.json <<EOF
+          {
+            "commit": "${BASELINE_COMMIT_SHORT}",
+            "timestamp": "${BASELINE_TIMESTAMP}",
+            "run_id": "${{ github.run_id }}"
+          }
+          EOF
+          
+          # 更新されたbaselineスクリーンショットとメタデータをGitにコミット
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           
@@ -99,8 +111,8 @@ jobs:
           if git diff --quiet tests/; then
             echo "No baseline screenshot changes to commit"
           else
-            echo "Committing updated baseline screenshots..."
-            git add tests/**/*-snapshots/**/*.png || true
+            echo "Committing updated baseline screenshots and metadata..."
+            git add tests/**/*-snapshots/**/*.png tests/baseline-metadata.json || true
             git commit -m "Update baseline screenshots from test run ${{ github.run_id }} [skip ci]" || echo "No changes to commit"
             git push origin main || echo "Push failed or no changes"
           fi
