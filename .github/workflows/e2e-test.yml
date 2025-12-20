@@ -167,38 +167,34 @@ jobs:
             echo "message=E2Eテストが失敗しました" >> $GITHUB_OUTPUT
           fi
 
-      # GitHub Pages関連のステップ
-      - name: Prepare report directory for GitHub Pages
+      # Cloudflare Pages関連のステップ
+      - name: Prepare report directory for Cloudflare Pages
         if: always()
         run: |
           BRANCH="${{ steps.branch.outputs.BRANCH }}"
           TIMESTAMP=$(date -u +%Y%m%d_%H%M%S)
           
-          mkdir -p gh-pages-report
+          mkdir -p cloudflare-pages-report
           if [ -d "playwright-report" ] && [ "$(ls -A playwright-report)" ]; then
-            cp -r playwright-report/* gh-pages-report/
+            cp -r playwright-report/* cloudflare-pages-report/
           else
             echo "No test report found, creating placeholder"
-            echo "<html><body><h1>Test Report</h1><p>No test results available</p></body></html>" > gh-pages-report/index.html
+            echo "<html><body><h1>Test Report</h1><p>No test results available</p></body></html>" > cloudflare-pages-report/index.html
           fi
           
           # テスト情報を記録
-          echo "{\"branch\": \"$BRANCH\", \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", \"run_id\": \"${{ github.run_id }}\", \"status\": \"${{ steps.test-result.outputs.status }}\"}" > gh-pages-report/metadata.json
+          echo "{\"branch\": \"$BRANCH\", \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", \"run_id\": \"${{ github.run_id }}\", \"status\": \"${{ steps.test-result.outputs.status }}\"}" > cloudflare-pages-report/metadata.json
 
-      - name: Setup Pages
-        if: always()
-        uses: actions/configure-pages@v4
-
-      - name: Upload artifact for GitHub Pages
-        if: always()
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: gh-pages-report/
-
-      - name: Deploy to GitHub Pages
+      - name: Deploy to Cloudflare Pages
         if: always()
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: ${{ secrets.CLOUDFLARE_PAGES_PROJECT_NAME }}
+          directory: cloudflare-pages-report/
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Send Slack notification
         if: always()
@@ -226,8 +222,14 @@ jobs:
             STATUS_TEXT="テスト失敗"
           fi
           
-          # GitHub Pages URLは現在使用していないため、フィールドは追加しない
-          PAGES_FIELD=""
+          # Cloudflare Pages URLを追加
+          if [ -n "${{ steps.deployment.outputs.url }}" ]; then
+            PAGES_URL="${{ steps.deployment.outputs.url }}"
+          else
+            PAGES_URL="https://202512visual-test-result.pages.dev"
+          fi
+          PAGES_FIELD=",
+                {\"title\": \"テスト結果レポート\", \"value\": \"<${PAGES_URL}|Cloudflare Pagesで確認>\", \"short\": false}"
           
           PAYLOAD=$(cat <<EOF
           {

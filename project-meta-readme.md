@@ -6,45 +6,67 @@ MedicalDOCのE2Eテストを行う
 - まずは見た目のテストから
 - ある箇所で加えた変更が、意図せず他の箇所に影響を与えていないかを主に確認したい
 - 最終的にはブランチごとにテストをとりたいが、まずはシンプルなテストを行う
-- github pagesにテスト結果を表示する
+- Cloudflare Pagesにテスト結果を表示する
 - ビジュアルテストを行うURLのリストは別ファイルで管理し、更新しやすくする
-- slackにテストが終わったこと・github pagesにテスト結果が公開されたことを通知する
+- slackにテストが終わったこと・Cloudflare Pagesにテスト結果が公開されたことを通知する
 
 # 検討中のこと
 
-## 5. GitHub Pagesにテスト結果を表示する
+## 5. Cloudflare Pagesにテスト結果を表示する
 ### 実現可能性: ⭐⭐⭐⭐⭐ (非常に高)
 
 ### 概要
-Playwrightのテスト結果レポートをGitHub Pagesに公開し、ブラウザからアクセス可能な形でテスト結果を確認できるようにする。
+Playwrightのテスト結果レポートをCloudflare Pagesに公開し、ブラウザからアクセス可能な形でテスト結果を確認できるようにする。Cloudflare Pagesは無料プランでも利用可能で、GitHub Pagesよりも柔軟な設定が可能。
 
 ### 実装方法
 
-#### 5-1. GitHub Pagesの有効化
-1. GitHubリポジトリの「Settings」→「Pages」にアクセス
-2. 「Source」で「GitHub Actions」を選択
-3. これにより、GitHub Actionsから直接GitHub Pagesにデプロイ可能になる
+#### 5-1. Cloudflare Pagesのセットアップ
+1. Cloudflareダッシュボードにログイン
+2. 「Workers & Pages」→「Create application」→「Pages」を選択
+3. 「Connect to Git」を選択してGitHubリポジトリを連携
+4. または、Wrangler CLIを使用して手動デプロイ
 
-#### 5-2. Playwrightレポートの生成と公開
+**現在のプロジェクト設定:**
+- プロジェクト名: `202512visual-test-result`
+- 公開URL: `https://202512visual-test-result.pages.dev`
+- デプロイ方法: GitHub Actionsから`cloudflare/pages-action`を使用
+
+#### 5-2. Playwrightレポートの生成とCloudflare Pagesへのデプロイ
 `.github/workflows/e2e-test.yml`に以下を追加：
 
 ```yaml
-      - name: Generate Playwright HTML Report
+      - name: Prepare report for Cloudflare Pages
         if: always()
-        run: npx playwright show-report --host 0.0.0.0 || true
+        run: |
+          BRANCH="${{ steps.branch.outputs.BRANCH }}"
+          TIMESTAMP=$(date -u +%Y%m%d_%H%M%S)
+          
+          mkdir -p cloudflare-pages-report
+          if [ -d "playwright-report" ] && [ "$(ls -A playwright-report)" ]; then
+            cp -r playwright-report/* cloudflare-pages-report/
+          else
+            echo "No test report found, creating placeholder"
+            echo "<html><body><h1>Test Report</h1><p>No test results available</p></body></html>" > cloudflare-pages-report/index.html
+          fi
+          
+          # テスト情報を記録
+          echo "{\"branch\": \"$BRANCH\", \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", \"run_id\": \"${{ github.run_id }}\", \"status\": \"${{ steps.test-result.outputs.status }}\"}" > cloudflare-pages-report/metadata.json
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Deploy to Cloudflare Pages
+        if: always()
+        uses: cloudflare/pages-action@v1
         with:
-          path: playwright-report/
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: ${{ secrets.CLOUDFLARE_PAGES_PROJECT_NAME }}
+          directory: cloudflare-pages-report/
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 ```
+
+**注意**: このステップを追加する前に、GitHub Secretsに以下を設定してください：
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ACCOUNT_ID`
+- `CLOUDFLARE_PAGES_PROJECT_NAME`
 
 #### 5-3. 詳細な実装例（環境別レポート）
 環境（demo/production）ごとにレポートを分けて管理する場合：
@@ -55,36 +77,27 @@ Playwrightのテスト結果レポートをGitHub Pagesに公開し、ブラウ�
         run: |
           ENV="${{ steps.env.outputs.ENV }}"
           BRANCH="${{ github.event.client_payload.branch }}"
-          mkdir -p gh-pages-report
-          cp -r playwright-report/* gh-pages-report/ || true
+          mkdir -p cloudflare-pages-report
+          cp -r playwright-report/* cloudflare-pages-report/ || true
           
           # 環境情報を記録
-          echo "{\"env\": \"$ENV\", \"branch\": \"$BRANCH\", \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", \"run_id\": \"${{ github.run_id }}\"}" > gh-pages-report/metadata.json
+          echo "{\"env\": \"$ENV\", \"branch\": \"$BRANCH\", \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", \"run_id\": \"${{ github.run_id }}\"}" > cloudflare-pages-report/metadata.json
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Deploy to Cloudflare Pages
+        if: always()
+        uses: cloudflare/pages-action@v1
         with:
-          path: gh-pages-report/
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: ${{ secrets.CLOUDFLARE_PAGES_PROJECT_NAME }}
+          directory: cloudflare-pages-report/
 ```
 
 #### 5-4. レポートの履歴管理
 複数のテスト実行結果を履歴として保持する場合：
 
 ```yaml
-      - name: Checkout pages branch
-        uses: actions/checkout@v4
-        with:
-          ref: gh-pages
-          fetch-depth: 0
-
-      - name: Save report with timestamp
+      - name: Prepare report with timestamp
         if: always()
         run: |
           ENV="${{ steps.env.outputs.ENV }}"
@@ -147,19 +160,50 @@ Playwrightのテスト結果レポートをGitHub Pagesに公開し、ブラウ�
 </html>
 ```
 
+#### 5-5. Wrangler CLIを使用した手動デプロイ（オプション）
+GitHub Actionsを使わずに手動でデプロイする場合：
+
+```bash
+# Wrangler CLIのインストール
+npm install -g wrangler
+
+# Cloudflareにログイン
+wrangler login
+
+# プロジェクトの初期化（初回のみ）
+wrangler pages project create <project-name>
+
+# レポートをデプロイ
+wrangler pages deploy cloudflare-pages-report/ --project-name=<project-name>
+```
+
 #### 5-6. アクセス制限（オプション）
-GitHub Pagesは公開されるため、必要に応じて：
-- プライベートリポジトリを使用（GitHub Pagesもプライベートになる）
+Cloudflare Pagesはデフォルトで公開されますが、必要に応じて：
+- Cloudflare Accessを使用して認証を追加
 - または、認証が必要な別のホスティングサービスを検討
 
 ### 必要な設定・ツール
-- GitHubリポジトリの「Pages」設定権限
-- GitHub Actionsの`pages:write`権限（自動で付与される）
+- Cloudflareアカウント（無料プランでも利用可能）
+- Cloudflare API Token（GitHub Secretsに設定）
+- Cloudflare Account ID（GitHub Secretsに設定）
+- Cloudflare Pages Project Name（GitHub Secretsに設定）
+- GitHub Actionsの`cloudflare/pages-action@v1`アクション
 - PlaywrightのHTMLレポート生成機能
 
+### GitHub Secretsの設定
+GitHubリポジトリのSettings > Secrets and variables > Actionsで以下を設定：
+- `CLOUDFLARE_API_TOKEN`: Cloudflare API Token（`Account` > `API Tokens`から作成）
+- `CLOUDFLARE_ACCOUNT_ID`: Cloudflare Account ID（ダッシュボードのURLから取得）
+- `CLOUDFLARE_PAGES_PROJECT_NAME`: Cloudflare Pagesプロジェクト名（現在の設定: `202512visual-test-result`）
+
+**現在のプロジェクト情報:**
+- プロジェクト名: `202512visual-test-result`
+- 公開URL: `https://202512visual-test-result.pages.dev`
+
 ### 制約事項
-- GitHub Pagesは公開リポジトリでは誰でもアクセス可能
-- プライベートリポジトリでも、GitHub Pagesは有料プランが必要な場合がある
+- Cloudflare Pagesはデフォルトで公開される（誰でもアクセス可能）
+- 無料プランでも利用可能で、帯域幅制限は緩い
+- カスタムドメインの設定も可能（無料プランでも対応）
 - レポートファイルサイズに制限がある（推奨: 1GB以下）
 - デプロイには数分かかる場合がある
 
