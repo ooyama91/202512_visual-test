@@ -70,53 +70,67 @@ jobs:
           echo "BASELINE_COMMIT=$BASELINE_COMMIT" >> $GITHUB_OUTPUT
           echo "Baseline commit: $BASELINE_COMMIT"
 
+      - name: Download baseline from artifacts (if available)
+        if: steps.branch.outputs.BRANCH == 'main'
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          name: baseline-screenshots-main
+          path: tests/
+          if_no_artifact_found: ignore
+        continue-on-error: true
+        id: download-baseline-artifacts
+
       - name: Pull latest baseline metadata and screenshots
         if: steps.branch.outputs.BRANCH == 'main'
         run: |
-          # 最新のbaselineメタデータとスクリーンショットを取得（前回のテスト実行で作成されたもの）
-          echo "Fetching latest changes from origin/main..."
-          git fetch origin main --depth=10 || echo "Fetch failed"
-          
-          # 最新のmainブランチからbaselineファイルを取得
-          echo "Checking out latest baseline files from origin/main..."
-          
           # testsディレクトリが存在することを確認
           mkdir -p tests
           
-          # baselineメタデータを取得（最新のコミットから）
-          if git show origin/main:tests/baseline-metadata.json > tests/baseline-metadata.json 2>/dev/null; then
-            echo "Baseline metadata retrieved from origin/main"
+          # Artifactsから取得できたか確認
+          if [ "${{ steps.download-baseline-artifacts.outcome }}" = "success" ]; then
+            echo "Baseline retrieved from Artifacts"
           else
-            echo "No baseline metadata found in latest commit, trying to find in recent commits..."
-            # 最近のコミットを確認
-            for commit in $(git log origin/main --oneline -10 --format="%H"); do
-              if git show $commit:tests/baseline-metadata.json > tests/baseline-metadata.json 2>/dev/null; then
-                echo "Baseline metadata found in commit $commit"
-                break
+            echo "Baseline not found in Artifacts, trying to get from Git..."
+            
+            # Gitからbaselineを取得（フォールバック）
+            echo "Fetching latest changes from origin/main..."
+            git fetch origin main --depth=10 || echo "Fetch failed"
+            
+            # baselineメタデータを取得（最新のコミットから）
+            if git show origin/main:tests/baseline-metadata.json > tests/baseline-metadata.json 2>/dev/null; then
+              echo "Baseline metadata retrieved from origin/main"
+            else
+              echo "No baseline metadata found in latest commit, trying to find in recent commits..."
+              # 最近のコミットを確認
+              for commit in $(git log origin/main --oneline -10 --format="%H"); do
+                if git show $commit:tests/baseline-metadata.json > tests/baseline-metadata.json 2>/dev/null; then
+                  echo "Baseline metadata found in commit $commit"
+                  break
+                fi
+              done
+              # まだ見つからない場合はcheckoutを試す
+              if [ ! -f "tests/baseline-metadata.json" ]; then
+                git checkout origin/main -- tests/baseline-metadata.json 2>/dev/null || echo "Checkout also failed"
               fi
-            done
-            # まだ見つからない場合はcheckoutを試す
-            if [ ! -f "tests/baseline-metadata.json" ]; then
-              git checkout origin/main -- tests/baseline-metadata.json 2>/dev/null || echo "Checkout also failed"
             fi
-          fi
-          
-          # baselineスクリーンショットを取得（ディレクトリ構造を確認しながら）
-          echo "Checking for baseline screenshots..."
-          # Playwrightのsnapshotsディレクトリ構造を確認
-          # 通常は tests/visual-regression.spec.ts-snapshots/ に保存される
-          if git ls-tree -r origin/main --name-only | grep -q "tests.*snapshots.*\.png"; then
-            echo "Baseline screenshots found in repository"
-            # Playwrightの標準的なsnapshotsディレクトリ構造で取得
-            git checkout origin/main -- 'tests/visual-regression.spec.ts-snapshots/**/*.png' 2>/dev/null || \
-            git checkout origin/main -- 'tests/**/*-snapshots/**/*.png' 2>/dev/null || \
-            git checkout origin/main -- 'tests/*-snapshots/**/*.png' 2>/dev/null || \
-            git checkout origin/main -- 'tests/**/*.png' 2>/dev/null || echo "No baseline screenshots found"
-          else
-            echo "No baseline screenshots found in repository"
-            # リポジトリ内の画像ファイルを確認
-            echo "Checking for any PNG files in tests directory:"
-            git ls-tree -r origin/main --name-only | grep "tests.*\.png" | head -10 || echo "No PNG files found"
+            
+            # baselineスクリーンショットを取得
+            echo "Checking for baseline screenshots in Git..."
+            SNAPSHOTS_DIR="tests/visual-regression.spec.ts-snapshots"
+            if git ls-tree -r origin/main --name-only | grep -q "tests.*snapshots.*\.png"; then
+              echo "Baseline screenshots found in repository"
+              # ディレクトリを作成
+              mkdir -p "$SNAPSHOTS_DIR"
+              # 個別のファイルを取得
+              for png_file in $(git ls-tree -r origin/main --name-only | grep "tests.*snapshots.*\.png"); do
+                git show "origin/main:$png_file" > "$png_file" 2>/dev/null && echo "Retrieved: $png_file" || echo "Failed to retrieve: $png_file"
+              done
+            else
+              echo "No baseline screenshots found in repository"
+              # リポジトリ内の画像ファイルを確認
+              echo "Checking for any PNG files in tests directory:"
+              git ls-tree -r origin/main --name-only | grep "tests.*\.png" | head -10 || echo "No PNG files found"
+            fi
           fi
           
           # baselineメタデータの存在を確認
@@ -132,12 +146,15 @@ jobs:
           
           # baselineスクリーンショットの存在を確認
           echo "Checking for baseline screenshots in various locations..."
-          if find tests -name "*.png" -path "*/snapshots/*" 2>/dev/null | grep -q .; then
+          SNAPSHOTS_DIR="tests/visual-regression.spec.ts-snapshots"
+          if [ -d "$SNAPSHOTS_DIR" ] && [ "$(ls -A $SNAPSHOTS_DIR/*.png 2>/dev/null | wc -l)" -gt 0 ]; then
+            echo "Baseline screenshots found in $SNAPSHOTS_DIR:"
+            ls -la "$SNAPSHOTS_DIR"/*.png | head -10
+          elif find tests -name "*.png" -path "*/snapshots/*" 2>/dev/null | grep -q .; then
             echo "Baseline screenshots found:"
             find tests -name "*.png" -path "*/snapshots/*" | head -10
           else
-            echo "No baseline screenshots found in snapshots directories"
-            # 他の場所も確認
+            echo "No baseline screenshots found (this will be the first run)"
             echo "Checking for PNG files in tests directory:"
             find tests -type f -name "*.png" 2>/dev/null | head -10 || echo "No PNG files found"
           fi
@@ -205,23 +222,104 @@ jobs:
           }
           EOF
           
+          # Playwrightのsnapshotsディレクトリ構造を確認
+          SNAPSHOTS_DIR="tests/visual-regression.spec.ts-snapshots"
+          echo "Checking for baseline screenshots in $SNAPSHOTS_DIR..."
+          
+          # baselineスクリーンショットの存在を確認
+          BASELINE_FILES_EXIST=false
+          if [ -d "$SNAPSHOTS_DIR" ] && [ "$(ls -A $SNAPSHOTS_DIR/*.png 2>/dev/null | wc -l)" -gt 0 ]; then
+            echo "Baseline screenshots found in $SNAPSHOTS_DIR:"
+            ls -la "$SNAPSHOTS_DIR"/*.png
+            BASELINE_FILES_EXIST=true
+          else
+            echo "No baseline screenshots found in $SNAPSHOTS_DIR"
+            echo "Checking other possible locations..."
+            if find tests -name "*.png" -path "*/snapshots/*" 2>/dev/null | grep -q .; then
+              echo "Baseline screenshots found in other locations:"
+              find tests -name "*.png" -path "*/snapshots/*" | head -10
+              BASELINE_FILES_EXIST=true
+            else
+              echo "WARNING: No baseline screenshots found after update!"
+            fi
+          fi
+          
+          # baselineメタデータの存在を確認
+          if [ ! -f "tests/baseline-metadata.json" ]; then
+            echo "ERROR: baseline-metadata.json was not created!"
+            exit 1
+          fi
+          
+          echo "Baseline metadata content:"
+          cat tests/baseline-metadata.json
+          
           # 更新されたbaselineスクリーンショットとメタデータをGitにコミット
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           
-          # baselineスクリーンショットとメタデータの変更を確認
-          git add tests/**/*-snapshots/**/*.png tests/baseline-metadata.json || true
+          # baselineスクリーンショットとメタデータを確実に追加
+          if [ "$BASELINE_FILES_EXIST" = "true" ]; then
+            # 具体的なディレクトリパスを指定
+            if [ -d "$SNAPSHOTS_DIR" ]; then
+              git add "$SNAPSHOTS_DIR"/*.png 2>/dev/null || {
+                echo "Failed to add screenshots with pattern, trying find command..."
+                find tests -name "*.png" -path "*/snapshots/*" -exec git add {} \; 2>/dev/null || echo "Failed to add screenshots"
+              }
+            else
+              # 他の場所にある場合
+              find tests -name "*.png" -path "*/snapshots/*" -exec git add {} \; 2>/dev/null || echo "Failed to add screenshots"
+            fi
+          fi
+          
+          # メタデータを追加
+          git add tests/baseline-metadata.json || {
+            echo "ERROR: Failed to add baseline-metadata.json"
+            exit 1
+          }
+          
+          # ステージングされた変更を確認
+          echo "Staged changes:"
+          git status --short || echo "No changes to stage"
           
           if git diff --staged --quiet; then
             echo "No baseline screenshot or metadata changes to commit"
           else
             echo "Committing updated baseline screenshots and metadata..."
-            echo "Baseline metadata content:"
-            cat tests/baseline-metadata.json
-            git commit -m "Update baseline screenshots from test run ${{ github.run_id }} [skip ci]" || echo "No changes to commit"
-            git push origin main || echo "Push failed or no changes"
-            echo "Baseline metadata committed and pushed"
+            git commit -m "Update baseline screenshots from test run ${{ github.run_id }} [skip ci]" || {
+              echo "ERROR: Commit failed"
+              exit 1
+            }
+            
+            # pushをリトライ（最大3回）
+            PUSH_RETRIES=3
+            PUSH_SUCCESS=false
+            for i in $(seq 1 $PUSH_RETRIES); do
+              if git push origin main; then
+                echo "Baseline metadata committed and pushed successfully"
+                PUSH_SUCCESS=true
+                break
+              else
+                echo "Push attempt $i failed, retrying..."
+                sleep 2
+              fi
+            done
+            
+            if [ "$PUSH_SUCCESS" = "false" ]; then
+              echo "ERROR: Failed to push baseline after $PUSH_RETRIES attempts"
+              exit 1
+            fi
           fi
+
+      - name: Upload baseline to artifacts
+        if: always() && steps.branch.outputs.BRANCH == 'main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: baseline-screenshots-main
+          path: |
+            tests/visual-regression.spec.ts-snapshots/
+            tests/baseline-metadata.json
+          retention-days: 90
+          if-no-files-found: ignore
 
       - name: Upload test results
         if: always()
