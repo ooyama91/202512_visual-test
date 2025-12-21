@@ -70,11 +70,25 @@ jobs:
           echo "BASELINE_COMMIT=$BASELINE_COMMIT" >> $GITHUB_OUTPUT
           echo "Baseline commit: $BASELINE_COMMIT"
 
-      - name: Pull latest baseline metadata
+      - name: Pull latest baseline metadata and screenshots
         if: steps.branch.outputs.BRANCH == 'main'
         run: |
-          # 最新のbaselineメタデータを取得（前回のテスト実行で作成されたもの）
-          git pull origin main || echo "No updates to pull"
+          # 最新のbaselineメタデータとスクリーンショットを取得（前回のテスト実行で作成されたもの）
+          echo "Fetching latest changes from origin/main..."
+          git fetch origin main --depth=1 || echo "Fetch failed"
+          
+          # 最新のmainブランチからbaselineファイルを取得
+          echo "Checking out latest baseline files from origin/main..."
+          git checkout origin/main -- tests/baseline-metadata.json 2>/dev/null || echo "No baseline metadata found in latest commit"
+          git checkout origin/main -- 'tests/**/*-snapshots/**/*.png' 2>/dev/null || echo "No baseline screenshots found in latest commit"
+          
+          # baselineメタデータの存在を確認
+          if [ -f "tests/baseline-metadata.json" ]; then
+            echo "Baseline metadata found:"
+            cat tests/baseline-metadata.json
+          else
+            echo "No baseline metadata found (this will be the first run)"
+          fi
           
       - name: Run Visual Regression Tests
         id: test-run
