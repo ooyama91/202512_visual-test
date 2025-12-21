@@ -153,17 +153,39 @@ test.describe('Visual Regression Tests', () => {
         });
         
         // baseline画像も添付（存在する場合）
-        const baselineImagePath = testInfo.snapshotPath(`${pageConfig.name}-${viewport}.png`);
-        if (fs.existsSync(baselineImagePath)) {
+        // Playwrightのbaseline画像は通常、テストファイル名-snapshotsディレクトリに保存される
+        const snapshotPath = testInfo.snapshotPath(`${pageConfig.name}-${viewport}.png`);
+        const possibleBaselinePaths = [
+          snapshotPath,
+          path.join(__dirname, 'visual-regression.spec.ts-snapshots', `${pageConfig.name}-${viewport}.png`),
+          path.join(process.cwd(), 'tests', 'visual-regression.spec.ts-snapshots', `${pageConfig.name}-${viewport}.png`),
+          path.resolve('tests', 'visual-regression.spec.ts-snapshots', `${pageConfig.name}-${viewport}.png`),
+        ];
+        
+        let baselineImagePath: string | null = null;
+        for (const tryPath of possibleBaselinePaths) {
+          console.log(`Trying to find baseline image at: ${tryPath}`);
+          if (fs.existsSync(tryPath)) {
+            baselineImagePath = tryPath;
+            console.log(`Found baseline image at: ${baselineImagePath}`);
+            break;
+          }
+        }
+        
+        if (baselineImagePath) {
           try {
             const baselineImage = fs.readFileSync(baselineImagePath);
             await testInfo.attach(`${pageConfig.name}-${viewport}-baseline.png`, {
               body: baselineImage,
               contentType: 'image/png',
             });
+            console.log(`Baseline image attached: ${pageConfig.name}-${viewport}-baseline.png`);
           } catch (e) {
             console.warn('Failed to attach baseline image:', e);
           }
+        } else {
+          console.log(`Baseline image not found for ${pageConfig.name}-${viewport}.png`);
+          console.log(`Snapshot path from Playwright: ${snapshotPath}`);
         }
       });
     });
@@ -176,11 +198,26 @@ test.describe('Visual Regression Tests', () => {
         const screenshotTimestampUTC = new Date().toISOString();
         const screenshotTimestamp = toJST(screenshotTimestampUTC);
         
-        // ベースラインメタデータを読み込む
+        // ベースラインメタデータを読み込む（複数のパスを試す）
         let baselineInfo: BaselineInfo | null = null;
-        const metadataPath = path.join(__dirname, 'baseline-metadata.json');
-        console.log(`Looking for baseline metadata at: ${metadataPath}`);
-        if (fs.existsSync(metadataPath)) {
+        const possiblePaths = [
+          path.join(__dirname, 'baseline-metadata.json'),
+          path.join(process.cwd(), 'tests', 'baseline-metadata.json'),
+          path.resolve('tests', 'baseline-metadata.json'),
+          'tests/baseline-metadata.json',
+        ];
+        
+        let metadataPath: string | null = null;
+        for (const tryPath of possiblePaths) {
+          console.log(`Trying to find baseline metadata at: ${tryPath}`);
+          if (fs.existsSync(tryPath)) {
+            metadataPath = tryPath;
+            console.log(`Found baseline metadata at: ${metadataPath}`);
+            break;
+          }
+        }
+        
+        if (metadataPath) {
           try {
             const metadataContent = fs.readFileSync(metadataPath, 'utf-8');
             console.log(`Baseline metadata content: ${metadataContent}`);
@@ -195,7 +232,9 @@ test.describe('Visual Regression Tests', () => {
             console.warn('Failed to read baseline metadata:', e);
           }
         } else {
-          console.log('Baseline metadata file not found');
+          console.log('Baseline metadata file not found in any of the tried paths');
+          console.log(`Current working directory: ${process.cwd()}`);
+          console.log(`__dirname: ${__dirname}`);
         }
         
         // レポートにベースライン情報と現在のテスト情報を表示
@@ -280,17 +319,39 @@ test.describe('Visual Regression Tests', () => {
       });
       
       // baseline画像も添付（存在する場合）
-      const baselineImagePath = testInfo.snapshotPath(`${elementConfig.name}.png`);
-      if (fs.existsSync(baselineImagePath)) {
+      // Playwrightのbaseline画像は通常、テストファイル名-snapshotsディレクトリに保存される
+      const snapshotPath = testInfo.snapshotPath(`${elementConfig.name}.png`);
+      const possibleBaselinePaths = [
+        snapshotPath,
+        path.join(__dirname, 'visual-regression.spec.ts-snapshots', `${elementConfig.name}.png`),
+        path.join(process.cwd(), 'tests', 'visual-regression.spec.ts-snapshots', `${elementConfig.name}.png`),
+        path.resolve('tests', 'visual-regression.spec.ts-snapshots', `${elementConfig.name}.png`),
+      ];
+      
+      let baselineImagePath: string | null = null;
+      for (const tryPath of possibleBaselinePaths) {
+        console.log(`Trying to find baseline image at: ${tryPath}`);
+        if (fs.existsSync(tryPath)) {
+          baselineImagePath = tryPath;
+          console.log(`Found baseline image at: ${baselineImagePath}`);
+          break;
+        }
+      }
+      
+      if (baselineImagePath) {
         try {
           const baselineImage = fs.readFileSync(baselineImagePath);
           await testInfo.attach(`${elementConfig.name}-baseline.png`, {
             body: baselineImage,
             contentType: 'image/png',
           });
+          console.log(`Baseline image attached: ${elementConfig.name}-baseline.png`);
         } catch (e) {
           console.warn('Failed to attach baseline image:', e);
         }
+      } else {
+        console.log(`Baseline image not found for ${elementConfig.name}.png`);
+        console.log(`Snapshot path from Playwright: ${snapshotPath}`);
       }
     });
   });
