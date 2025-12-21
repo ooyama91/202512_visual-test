@@ -9,6 +9,24 @@ const viewportSizes = {
   mobile: { width: 375, height: 667 },
 };
 
+// UTC時刻をJST（UTC+9）に変換する関数
+function toJST(utcString: string): string {
+  try {
+    const date = new Date(utcString);
+    // UTC+9時間（JST）に変換
+    const jstTime = new Date(date.getTime() + (9 * 60 * 60 * 1000));
+    const year = jstTime.getUTCFullYear();
+    const month = String(jstTime.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(jstTime.getUTCDate()).padStart(2, '0');
+    const hours = String(jstTime.getUTCHours()).padStart(2, '0');
+    const minutes = String(jstTime.getUTCMinutes()).padStart(2, '0');
+    const seconds = String(jstTime.getUTCSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds} JST`;
+  } catch (e) {
+    return utcString; // 変換に失敗した場合は元の文字列を返す
+  }
+}
+
 test.describe('Visual Regression Tests', () => {
   // URLリストから動的にテストを生成
   testUrls.pages.forEach((pageConfig) => {
@@ -43,9 +61,10 @@ test.describe('Visual Regression Tests', () => {
           
           // ベースライン情報
           if (baselineInfo) {
+            const baselineTimestampJST = baselineInfo.timestamp !== 'unknown' ? toJST(baselineInfo.timestamp) : 'unknown';
             testInfo.annotations.push({
               type: 'Baseline Info',
-              description: `Baseline from Commit: ${baselineInfo.commit} | Captured: ${baselineInfo.timestamp} | Run: ${baselineInfo.runId}`,
+              description: `Baseline from Commit: ${baselineInfo.commit} | Captured: ${baselineTimestampJST} | Run: ${baselineInfo.runId}`,
             });
           } else {
             testInfo.annotations.push({
@@ -63,9 +82,10 @@ test.describe('Visual Regression Tests', () => {
           });
         } else {
           if (baselineInfo) {
+            const baselineTimestampJST = baselineInfo.timestamp !== 'unknown' ? toJST(baselineInfo.timestamp) : 'unknown';
             testInfo.annotations.push({
               type: 'Baseline Info',
-              description: `Baseline from ${baselineInfo.timestamp} (Run: ${baselineInfo.runId})`,
+              description: `Baseline from ${baselineTimestampJST} (Run: ${baselineInfo.runId})`,
             });
           } else {
             testInfo.annotations.push({
@@ -124,8 +144,9 @@ test.describe('Visual Regression Tests', () => {
   // 要素単位のテスト
   testUrls.elements.forEach((elementConfig) => {
       test(`${elementConfig.description}の見た目が変わっていないか`, async ({ page }, testInfo) => {
-        // 画像取得時刻を記録（スクリーンショット撮影前）
-        const screenshotTimestamp = new Date().toISOString();
+        // 画像取得時刻を記録（スクリーンショット撮影前、JSTで表示）
+        const screenshotTimestampUTC = new Date().toISOString();
+        const screenshotTimestamp = toJST(screenshotTimestampUTC);
         
         // ベースラインメタデータを読み込む
         let baselineInfo = null;
@@ -151,9 +172,10 @@ test.describe('Visual Regression Tests', () => {
           
           // ベースライン情報
           if (baselineInfo) {
+            const baselineTimestampJST = baselineInfo.timestamp !== 'unknown' ? toJST(baselineInfo.timestamp) : 'unknown';
             testInfo.annotations.push({
               type: 'Baseline Info',
-              description: `Baseline from Commit: ${baselineInfo.commit} | Captured: ${baselineInfo.timestamp} | Run: ${baselineInfo.runId}`,
+              description: `Baseline from Commit: ${baselineInfo.commit} | Captured: ${baselineTimestampJST} | Run: ${baselineInfo.runId}`,
             });
           } else {
             testInfo.annotations.push({
@@ -171,9 +193,10 @@ test.describe('Visual Regression Tests', () => {
           });
         } else {
           if (baselineInfo) {
+            const baselineTimestampJST = baselineInfo.timestamp !== 'unknown' ? toJST(baselineInfo.timestamp) : 'unknown';
             testInfo.annotations.push({
               type: 'Baseline Info',
-              description: `Baseline from ${baselineInfo.timestamp} (Run: ${baselineInfo.runId})`,
+              description: `Baseline from ${baselineTimestampJST} (Run: ${baselineInfo.runId})`,
             });
           } else {
             testInfo.annotations.push({
