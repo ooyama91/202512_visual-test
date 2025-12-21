@@ -75,19 +75,34 @@ jobs:
         run: |
           # 最新のbaselineメタデータとスクリーンショットを取得（前回のテスト実行で作成されたもの）
           echo "Fetching latest changes from origin/main..."
-          git fetch origin main --depth=1 || echo "Fetch failed"
+          git fetch origin main --depth=10 || echo "Fetch failed"
           
           # 最新のmainブランチからbaselineファイルを取得
           echo "Checking out latest baseline files from origin/main..."
-          git checkout origin/main -- tests/baseline-metadata.json 2>/dev/null || echo "No baseline metadata found in latest commit"
+          # まず、baselineメタデータを取得（最新のコミットから）
+          if git show origin/main:tests/baseline-metadata.json > tests/baseline-metadata.json 2>/dev/null; then
+            echo "Baseline metadata retrieved from origin/main"
+          else
+            echo "No baseline metadata found in latest commit"
+            # フォールバック: checkoutを試す
+            git checkout origin/main -- tests/baseline-metadata.json 2>/dev/null || echo "Checkout also failed"
+          fi
+          
+          # baselineスクリーンショットを取得
           git checkout origin/main -- 'tests/**/*-snapshots/**/*.png' 2>/dev/null || echo "No baseline screenshots found in latest commit"
           
           # baselineメタデータの存在を確認
           if [ -f "tests/baseline-metadata.json" ]; then
             echo "Baseline metadata found:"
             cat tests/baseline-metadata.json
+            echo ""
+            echo "Baseline metadata file exists and is readable"
+            ls -la tests/baseline-metadata.json
           else
             echo "No baseline metadata found (this will be the first run)"
+            echo "Current directory: $(pwd)"
+            echo "Tests directory contents:"
+            ls -la tests/ 2>/dev/null || echo "Tests directory does not exist"
           fi
           
       - name: Run Visual Regression Tests

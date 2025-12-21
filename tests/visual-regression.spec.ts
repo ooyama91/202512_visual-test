@@ -27,6 +27,13 @@ function toJST(utcString: string): string {
   }
 }
 
+// Baseline情報の型定義
+interface BaselineInfo {
+  commit: string;
+  timestamp: string;
+  runId: string;
+}
+
 test.describe('Visual Regression Tests', () => {
   // URLリストから動的にテストを生成
   testUrls.pages.forEach((pageConfig) => {
@@ -34,23 +41,30 @@ test.describe('Visual Regression Tests', () => {
     
     viewports.forEach((viewport) => {
       test(`${pageConfig.description} - ${viewport}`, async ({ page }, testInfo) => {
-        // 画像取得時刻を記録（スクリーンショット撮影前）
-        const screenshotTimestamp = new Date().toISOString();
+        // 画像取得時刻を記録（スクリーンショット撮影前、JSTで表示）
+        const screenshotTimestampUTC = new Date().toISOString();
+        const screenshotTimestamp = toJST(screenshotTimestampUTC);
         
         // ベースラインメタデータを読み込む
-        let baselineInfo = null;
+        let baselineInfo: BaselineInfo | null = null;
         const metadataPath = path.join(__dirname, 'baseline-metadata.json');
+        console.log(`Looking for baseline metadata at: ${metadataPath}`);
         if (fs.existsSync(metadataPath)) {
           try {
-            const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'));
+            const metadataContent = fs.readFileSync(metadataPath, 'utf-8');
+            console.log(`Baseline metadata content: ${metadataContent}`);
+            const metadata = JSON.parse(metadataContent);
             baselineInfo = {
               commit: metadata.commit || 'unknown',
               timestamp: metadata.timestamp || 'unknown',
               runId: metadata.run_id || 'unknown',
             };
+            console.log(`Baseline info loaded: ${JSON.stringify(baselineInfo)}`);
           } catch (e) {
             console.warn('Failed to read baseline metadata:', e);
           }
+        } else {
+          console.log('Baseline metadata file not found');
         }
         
         // レポートにベースライン情報と現在のテスト情報を表示
@@ -149,19 +163,25 @@ test.describe('Visual Regression Tests', () => {
         const screenshotTimestamp = toJST(screenshotTimestampUTC);
         
         // ベースラインメタデータを読み込む
-        let baselineInfo = null;
+        let baselineInfo: BaselineInfo | null = null;
         const metadataPath = path.join(__dirname, 'baseline-metadata.json');
+        console.log(`Looking for baseline metadata at: ${metadataPath}`);
         if (fs.existsSync(metadataPath)) {
           try {
-            const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'));
+            const metadataContent = fs.readFileSync(metadataPath, 'utf-8');
+            console.log(`Baseline metadata content: ${metadataContent}`);
+            const metadata = JSON.parse(metadataContent);
             baselineInfo = {
               commit: metadata.commit || 'unknown',
               timestamp: metadata.timestamp || 'unknown',
               runId: metadata.run_id || 'unknown',
             };
+            console.log(`Baseline info loaded: ${JSON.stringify(baselineInfo)}`);
           } catch (e) {
             console.warn('Failed to read baseline metadata:', e);
           }
+        } else {
+          console.log('Baseline metadata file not found');
         }
         
         // レポートにベースライン情報と現在のテスト情報を表示

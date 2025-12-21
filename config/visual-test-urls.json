@@ -4,7 +4,18 @@
       "path": "/weather/",
       "name": "top-page",
       "description": "トップページ",
-      "viewport": ["desktop", "tablet", "mobile"]
+      "viewport": ["desktop", "tablet", "mobile"],
+      "mask": [
+        "[class*='ad']",
+        "[id*='ad']",
+        "[class*='Ad']",
+        "[id*='Ad']",
+        ".advertisement",
+        ".advert",
+        ".ads",
+        "[data-ad]",
+        "[data-ads]"
+      ]
     },
     {
       "path": "/weather/week/",
