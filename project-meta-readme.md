@@ -31,6 +31,28 @@ Playwrightのテスト結果レポートをCloudflare Pagesに公開し、ブラ
 - 公開URL: `https://202512visual-test-result.pages.dev`
 - デプロイ方法: GitHub Actionsから`cloudflare/pages-action`を使用
 
+#### 5-1-1. Cloudflare API Tokenの取得
+GitHub ActionsからCloudflare Pagesにデプロイするために、API Tokenが必要です。
+
+1. Cloudflareダッシュボードにログイン
+2. 右上のアカウントアイコンをクリック → **「My Profile」**を選択
+3. **「API Tokens」**タブを開く
+4. **「Create Token」**ボタンをクリック
+5. テンプレートから **「Edit Cloudflare Workers」** を選択（またはカスタムトークンを作成）
+   - 必要な権限: **Account** → **Cloudflare Pages** → **Edit**
+   - テンプレートの初期設定のままで問題ありません（Cloudflare Pages / Edit権限が含まれています）
+6. **「Continue to summary」** → **「Create Token」**をクリック
+7. 表示されたトークンをコピー（一度しか表示されないため、必ず保存してください）
+   - このトークンをGitHub Secretsの`CLOUDFLARE_API_TOKEN`に設定します
+
+#### 5-1-2. Cloudflare Account IDの取得
+1. Cloudflareダッシュボードにログイン
+2. 右上のアカウント名をクリック → **「Account Home」**を選択
+3. ページ上部に表示されている **Account ID**（32文字の英数字）をコピー
+   - または、ダッシュボードのURLから取得: `https://dash.cloudflare.com/[Account ID]/...`
+   - URLの`/`と`/`の間の文字列がAccount IDです
+4. このAccount IDをGitHub Secretsの`CLOUDFLARE_ACCOUNT_ID`に設定します
+
 #### 5-2. Playwrightレポートの生成とCloudflare Pagesへのデプロイ
 `.github/workflows/e2e-test.yml`に以下を追加：
 
@@ -192,13 +214,36 @@ Cloudflare Pagesはデフォルトで公開されますが、必要に応じて�
 
 ### GitHub Secretsの設定
 GitHubリポジトリのSettings > Secrets and variables > Actionsで以下を設定：
-- `CLOUDFLARE_API_TOKEN`: Cloudflare API Token（`Account` > `API Tokens`から作成）
-- `CLOUDFLARE_ACCOUNT_ID`: Cloudflare Account ID（ダッシュボードのURLから取得）
-- `CLOUDFLARE_PAGES_PROJECT_NAME`: Cloudflare Pagesプロジェクト名（現在の設定: `202512visual-test-result`）
+
+#### Secretsの登録手順
+1. GitHubリポジトリの**「Settings」**タブを開く
+2. 左メニューの**「Secrets and variables」** → **「Actions」**を選択
+3. **「New repository secret」**ボタンをクリック
+4. 以下の3つのSecretを追加：
+
+**Secret 1: `CLOUDFLARE_API_TOKEN`**
+- **Name**: `CLOUDFLARE_API_TOKEN`
+- **Secret**: 上記「5-1-1. Cloudflare API Tokenの取得」で取得したAPI Tokenを貼り付け
+- **「Add secret」**をクリック
+
+**Secret 2: `CLOUDFLARE_ACCOUNT_ID`**
+- **Name**: `CLOUDFLARE_ACCOUNT_ID`
+- **Secret**: 上記「5-1-2. Cloudflare Account IDの取得」で取得したAccount IDを貼り付け
+- **「Add secret」**をクリック
+
+**Secret 3: `CLOUDFLARE_PAGES_PROJECT_NAME`**
+- **Name**: `CLOUDFLARE_PAGES_PROJECT_NAME`
+- **Secret**: `202512visual-test-result`（プロジェクト名）
+- **「Add secret」**をクリック
 
 **現在のプロジェクト情報:**
 - プロジェクト名: `202512visual-test-result`
 - 公開URL: `https://202512visual-test-result.pages.dev`
+
+**注意事項:**
+- Secretの値は一度登録すると再確認できません（表示されません）
+- 間違えた場合は削除して再登録してください
+- 値に余分なスペースや改行が入らないように注意してください
 
 ### 制約事項
 - Cloudflare Pagesはデフォルトで公開される（誰でもアクセス可能）
