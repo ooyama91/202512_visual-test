@@ -103,15 +103,20 @@ jobs:
           
           # baselineスクリーンショットを取得（ディレクトリ構造を確認しながら）
           echo "Checking for baseline screenshots..."
-          # まず、snapshotsディレクトリの構造を確認
+          # Playwrightのsnapshotsディレクトリ構造を確認
+          # 通常は tests/visual-regression.spec.ts-snapshots/ に保存される
           if git ls-tree -r origin/main --name-only | grep -q "tests.*snapshots.*\.png"; then
             echo "Baseline screenshots found in repository"
-            # すべてのbaseline画像を取得
+            # Playwrightの標準的なsnapshotsディレクトリ構造で取得
+            git checkout origin/main -- 'tests/visual-regression.spec.ts-snapshots/**/*.png' 2>/dev/null || \
             git checkout origin/main -- 'tests/**/*-snapshots/**/*.png' 2>/dev/null || \
             git checkout origin/main -- 'tests/*-snapshots/**/*.png' 2>/dev/null || \
             git checkout origin/main -- 'tests/**/*.png' 2>/dev/null || echo "No baseline screenshots found"
           else
             echo "No baseline screenshots found in repository"
+            # リポジトリ内の画像ファイルを確認
+            echo "Checking for any PNG files in tests directory:"
+            git ls-tree -r origin/main --name-only | grep "tests.*\.png" | head -10 || echo "No PNG files found"
           fi
           
           # baselineメタデータの存在を確認
@@ -126,17 +131,24 @@ jobs:
           fi
           
           # baselineスクリーンショットの存在を確認
+          echo "Checking for baseline screenshots in various locations..."
           if find tests -name "*.png" -path "*/snapshots/*" 2>/dev/null | grep -q .; then
             echo "Baseline screenshots found:"
-            find tests -name "*.png" -path "*/snapshots/*" | head -5
+            find tests -name "*.png" -path "*/snapshots/*" | head -10
           else
-            echo "No baseline screenshots found (this will be the first run)"
+            echo "No baseline screenshots found in snapshots directories"
+            # 他の場所も確認
+            echo "Checking for PNG files in tests directory:"
+            find tests -type f -name "*.png" 2>/dev/null | head -10 || echo "No PNG files found"
           fi
           
           echo "Current directory: $(pwd)"
           echo "Tests directory structure:"
           ls -la tests/ 2>/dev/null || echo "Tests directory does not exist"
-          find tests -type f -name "*.png" 2>/dev/null | head -10 || echo "No PNG files found"
+          if [ -d "tests" ]; then
+            echo "Recursive listing of tests directory:"
+            find tests -type f 2>/dev/null | head -20 || echo "No files found"
+          fi
           
       - name: Run Visual Regression Tests
         id: test-run
