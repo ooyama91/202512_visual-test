@@ -79,17 +79,40 @@ jobs:
           
           # 最新のmainブランチからbaselineファイルを取得
           echo "Checking out latest baseline files from origin/main..."
-          # まず、baselineメタデータを取得（最新のコミットから）
+          
+          # testsディレクトリが存在することを確認
+          mkdir -p tests
+          
+          # baselineメタデータを取得（最新のコミットから）
           if git show origin/main:tests/baseline-metadata.json > tests/baseline-metadata.json 2>/dev/null; then
             echo "Baseline metadata retrieved from origin/main"
           else
-            echo "No baseline metadata found in latest commit"
-            # フォールバック: checkoutを試す
-            git checkout origin/main -- tests/baseline-metadata.json 2>/dev/null || echo "Checkout also failed"
+            echo "No baseline metadata found in latest commit, trying to find in recent commits..."
+            # 最近のコミットを確認
+            for commit in $(git log origin/main --oneline -10 --format="%H"); do
+              if git show $commit:tests/baseline-metadata.json > tests/baseline-metadata.json 2>/dev/null; then
+                echo "Baseline metadata found in commit $commit"
+                break
+              fi
+            done
+            # まだ見つからない場合はcheckoutを試す
+            if [ ! -f "tests/baseline-metadata.json" ]; then
+              git checkout origin/main -- tests/baseline-metadata.json 2>/dev/null || echo "Checkout also failed"
+            fi
           fi
           
-          # baselineスクリーンショットを取得
-          git checkout origin/main -- 'tests/**/*-snapshots/**/*.png' 2>/dev/null || echo "No baseline screenshots found in latest commit"
+          # baselineスクリーンショットを取得（ディレクトリ構造を確認しながら）
+          echo "Checking for baseline screenshots..."
+          # まず、snapshotsディレクトリの構造を確認
+          if git ls-tree -r origin/main --name-only | grep -q "tests.*snapshots.*\.png"; then
+            echo "Baseline screenshots found in repository"
+            # すべてのbaseline画像を取得
+            git checkout origin/main -- 'tests/**/*-snapshots/**/*.png' 2>/dev/null || \
+            git checkout origin/main -- 'tests/*-snapshots/**/*.png' 2>/dev/null || \
+            git checkout origin/main -- 'tests/**/*.png' 2>/dev/null || echo "No baseline screenshots found"
+          else
+            echo "No baseline screenshots found in repository"
+          fi
           
           # baselineメタデータの存在を確認
           if [ -f "tests/baseline-metadata.json" ]; then
@@ -100,10 +123,20 @@ jobs:
             ls -la tests/baseline-metadata.json
           else
             echo "No baseline metadata found (this will be the first run)"
-            echo "Current directory: $(pwd)"
-            echo "Tests directory contents:"
-            ls -la tests/ 2>/dev/null || echo "Tests directory does not exist"
           fi
+          
+          # baselineスクリーンショットの存在を確認
+          if find tests -name "*.png" -path "*/snapshots/*" 2>/dev/null | grep -q .; then
+            echo "Baseline screenshots found:"
+            find tests -name "*.png" -path "*/snapshots/*" | head -5
+          else
+            echo "No baseline screenshots found (this will be the first run)"
+          fi
+          
+          echo "Current directory: $(pwd)"
+          echo "Tests directory structure:"
+          ls -la tests/ 2>/dev/null || echo "Tests directory does not exist"
+          find tests -type f -name "*.png" 2>/dev/null | head -10 || echo "No PNG files found"
           
       - name: Run Visual Regression Tests
         id: test-run
@@ -111,16 +144,29 @@ jobs:
           BASE_URL: ${{ steps.base-url.outputs.BASE_URL }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
           BASELINE_COMMIT: ${{ steps.baseline.outputs.BASELINE_COMMIT }}
+          GITHUB_SHA: ${{ github.sha }}
         run: |
           # 前回のテスト結果をbaselineとして比較（差分があっても記録する）
           echo "Running visual regression tests against baseline from previous run"
+          
           # baselineメタデータの存在を確認
           if [ -f "tests/baseline-metadata.json" ]; then
             echo "Baseline metadata found:"
             cat tests/baseline-metadata.json
+            echo ""
+            echo "Baseline metadata file path: $(pwd)/tests/baseline-metadata.json"
+            echo "File exists check: $(test -f tests/baseline-metadata.json && echo 'YES' || echo 'NO')"
           else
             echo "No baseline metadata found (first run)"
+            echo "Current directory: $(pwd)"
+            echo "Tests directory contents:"
+            ls -la tests/ 2>/dev/null || echo "Tests directory does not exist"
           fi
+          
+          # baselineスクリーンショットの存在を確認
+          echo "Checking for baseline screenshots..."
+          find tests -name "*.png" -path "*/snapshots/*" 2>/dev/null | head -10 || echo "No baseline screenshots found"
+          
           npx playwright test --grep "Visual Regression" || true
           # テスト結果に関わらず続行（差分があってもbaselineを更新する方針）
 
@@ -173,6 +219,8 @@ jobs:
           path: |
             playwright-report/
             test-results/
+            tests/**/*-snapshots/**/*.png
+            tests/baseline-metadata.json
           retention-days: 30
           if-no-files-found: ignore
 

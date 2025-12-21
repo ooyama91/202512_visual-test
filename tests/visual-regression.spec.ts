@@ -151,6 +151,20 @@ test.describe('Visual Regression Tests', () => {
           body: screenshot,
           contentType: 'image/png',
         });
+        
+        // baseline画像も添付（存在する場合）
+        const baselineImagePath = testInfo.snapshotPath(`${pageConfig.name}-${viewport}.png`);
+        if (fs.existsSync(baselineImagePath)) {
+          try {
+            const baselineImage = fs.readFileSync(baselineImagePath);
+            await testInfo.attach(`${pageConfig.name}-${viewport}-baseline.png`, {
+              body: baselineImage,
+              contentType: 'image/png',
+            });
+          } catch (e) {
+            console.warn('Failed to attach baseline image:', e);
+          }
+        }
       });
     });
   });
@@ -264,6 +278,20 @@ test.describe('Visual Regression Tests', () => {
         body: elementScreenshot,
         contentType: 'image/png',
       });
+      
+      // baseline画像も添付（存在する場合）
+      const baselineImagePath = testInfo.snapshotPath(`${elementConfig.name}.png`);
+      if (fs.existsSync(baselineImagePath)) {
+        try {
+          const baselineImage = fs.readFileSync(baselineImagePath);
+          await testInfo.attach(`${elementConfig.name}-baseline.png`, {
+            body: baselineImage,
+            contentType: 'image/png',
+          });
+        } catch (e) {
+          console.warn('Failed to attach baseline image:', e);
+        }
+      }
     });
   });
 });
