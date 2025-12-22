@@ -167,6 +167,18 @@ jobs:
             find tests -type f 2>/dev/null | head -20 || echo "No files found"
           fi
           
+      - name: Save baseline metadata before test (for comparison)
+        if: steps.branch.outputs.BRANCH == 'main'
+        run: |
+          # テスト実行前にbaselineメタデータをバックアップ（比較用）
+          if [ -f "tests/baseline-metadata.json" ]; then
+            cp tests/baseline-metadata.json tests/baseline-metadata-before-test.json
+            echo "Baseline metadata saved for comparison:"
+            cat tests/baseline-metadata-before-test.json
+          else
+            echo "No baseline metadata found (first run)"
+          fi
+
       - name: Run Visual Regression Tests
         id: test-run
         env:
@@ -177,6 +189,13 @@ jobs:
         run: |
           # 前回のテスト結果をbaselineとして比較（差分があっても記録する）
           echo "Running visual regression tests against baseline from previous run"
+          
+          # バックアップしたbaselineメタデータを復元（テスト実行時に使用）
+          if [ -f "tests/baseline-metadata-before-test.json" ]; then
+            cp tests/baseline-metadata-before-test.json tests/baseline-metadata.json
+            echo "Baseline metadata restored for test execution:"
+            cat tests/baseline-metadata.json
+          fi
           
           # baselineメタデータの存在を確認
           if [ -f "tests/baseline-metadata.json" ]; then
