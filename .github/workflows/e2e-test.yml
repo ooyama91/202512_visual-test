@@ -167,16 +167,32 @@ jobs:
             find tests -type f 2>/dev/null | head -20 || echo "No files found"
           fi
           
-      - name: Save baseline metadata before test (for comparison)
+      - name: Backup baseline before test (for comparison)
         if: steps.branch.outputs.BRANCH == 'main'
         run: |
-          # テスト実行前にbaselineメタデータをバックアップ（比較用）
+          # テスト実行前にbaselineメタデータとスクリーンショットをバックアップ（比較用）
+          SNAPSHOTS_DIR="tests/visual-regression.spec.ts-snapshots"
+          BASELINE_BACKUP_DIR="tests/baseline-backup"
+          
+          mkdir -p "$BASELINE_BACKUP_DIR"
+          
+          # baselineメタデータをバックアップ
           if [ -f "tests/baseline-metadata.json" ]; then
-            cp tests/baseline-metadata.json tests/baseline-metadata-before-test.json
+            cp tests/baseline-metadata.json "$BASELINE_BACKUP_DIR/baseline-metadata.json"
             echo "Baseline metadata saved for comparison:"
-            cat tests/baseline-metadata-before-test.json
+            cat "$BASELINE_BACKUP_DIR/baseline-metadata.json"
           else
             echo "No baseline metadata found (first run)"
+          fi
+          
+          # baselineスクリーンショットをバックアップ
+          if [ -d "$SNAPSHOTS_DIR" ] && [ "$(ls -A $SNAPSHOTS_DIR/*.png 2>/dev/null | wc -l)" -gt 0 ]; then
+            mkdir -p "$BASELINE_BACKUP_DIR/snapshots"
+            cp -r "$SNAPSHOTS_DIR"/*.png "$BASELINE_BACKUP_DIR/snapshots/" 2>/dev/null || true
+            echo "Baseline screenshots backed up:"
+            ls -la "$BASELINE_BACKUP_DIR/snapshots/" | head -10
+          else
+            echo "No baseline screenshots found to backup"
           fi
 
       - name: Run Visual Regression Tests
@@ -190,11 +206,22 @@ jobs:
           # 前回のテスト結果をbaselineとして比較（差分があっても記録する）
           echo "Running visual regression tests against baseline from previous run"
           
-          # バックアップしたbaselineメタデータを復元（テスト実行時に使用）
-          if [ -f "tests/baseline-metadata-before-test.json" ]; then
-            cp tests/baseline-metadata-before-test.json tests/baseline-metadata.json
+          # バックアップしたbaselineメタデータとスクリーンショットを復元（テスト実行時に使用）
+          BASELINE_BACKUP_DIR="tests/baseline-backup"
+          SNAPSHOTS_DIR="tests/visual-regression.spec.ts-snapshots"
+          
+          if [ -f "$BASELINE_BACKUP_DIR/baseline-metadata.json" ]; then
+            cp "$BASELINE_BACKUP_DIR/baseline-metadata.json" tests/baseline-metadata.json
             echo "Baseline metadata restored for test execution:"
             cat tests/baseline-metadata.json
+          fi
+          
+          # baselineスクリーンショットを復元
+          if [ -d "$BASELINE_BACKUP_DIR/snapshots" ] && [ "$(ls -A $BASELINE_BACKUP_DIR/snapshots/*.png 2>/dev/null | wc -l)" -gt 0 ]; then
+            mkdir -p "$SNAPSHOTS_DIR"
+            cp "$BASELINE_BACKUP_DIR/snapshots"/*.png "$SNAPSHOTS_DIR/" 2>/dev/null || true
+            echo "Baseline screenshots restored for test execution:"
+            ls -la "$SNAPSHOTS_DIR"/*.png | head -10
           fi
           
           # baselineメタデータの存在を確認
