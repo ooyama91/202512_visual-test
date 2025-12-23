@@ -45,47 +45,39 @@ test.describe('Visual Regression Tests', () => {
         const screenshotTimestampUTC = new Date().toISOString();
         const screenshotTimestamp = toJST(screenshotTimestampUTC);
         
-        // ベースラインメタデータを読み込む
+        // ベースラインメタデータを読み込む（オプション、表示用）
         let baselineInfo: BaselineInfo | null = null;
         const metadataPath = path.join(__dirname, 'baseline-metadata.json');
-        console.log(`Looking for baseline metadata at: ${metadataPath}`);
         if (fs.existsSync(metadataPath)) {
           try {
             const metadataContent = fs.readFileSync(metadataPath, 'utf-8');
-            console.log(`Baseline metadata content: ${metadataContent}`);
             const metadata = JSON.parse(metadataContent);
             baselineInfo = {
               commit: metadata.commit || 'unknown',
               timestamp: metadata.timestamp || 'unknown',
               runId: metadata.run_id || 'unknown',
             };
-            console.log(`Baseline info loaded: ${JSON.stringify(baselineInfo)}`);
           } catch (e) {
             console.warn('Failed to read baseline metadata:', e);
           }
-        } else {
-          console.log('Baseline metadata file not found');
         }
         
         // レポートにベースライン情報と現在のテスト情報を表示
         if (process.env.GITHUB_SHA) {
           const currentCommit = process.env.GITHUB_SHA.slice(0, 7);
           const branch = process.env.GITHUB_REF_NAME || 'unknown';
-          const isMainBranch = branch === 'main';
           
-          // ベースライン情報
-          if (baselineInfo) {
-            const baselineTimestampJST = baselineInfo.timestamp !== 'unknown' ? toJST(baselineInfo.timestamp) : 'unknown';
+          // ベースライン情報（固定baseline方式）
+          if (baselineInfo && baselineInfo.timestamp !== 'unknown') {
+            const baselineTimestampJST = toJST(baselineInfo.timestamp);
             testInfo.annotations.push({
               type: 'Baseline Info',
-              description: `Baseline from Commit: ${baselineInfo.commit} | Captured: ${baselineTimestampJST} | Run: ${baselineInfo.runId}`,
+              description: `Baseline from Commit: ${baselineInfo.commit} | Captured: ${baselineTimestampJST}`,
             });
           } else {
             testInfo.annotations.push({
               type: 'Baseline Info',
-              description: isMainBranch 
-                ? 'Creating new baseline (first run)'
-                : `Comparing against baseline from main branch (Commit: ${process.env.BASELINE_COMMIT || 'latest'})`,
+              description: 'Comparing against committed baseline screenshots (fixed baseline)',
             });
           }
           
@@ -95,16 +87,16 @@ test.describe('Visual Regression Tests', () => {
             description: `Test Commit: ${currentCommit} | Branch: ${branch} | Screenshot captured: ${screenshotTimestamp}`,
           });
         } else {
-          if (baselineInfo) {
-            const baselineTimestampJST = baselineInfo.timestamp !== 'unknown' ? toJST(baselineInfo.timestamp) : 'unknown';
+          if (baselineInfo && baselineInfo.timestamp !== 'unknown') {
+            const baselineTimestampJST = toJST(baselineInfo.timestamp);
             testInfo.annotations.push({
               type: 'Baseline Info',
-              description: `Baseline from ${baselineTimestampJST} (Run: ${baselineInfo.runId})`,
+              description: `Baseline from ${baselineTimestampJST}`,
             });
           } else {
             testInfo.annotations.push({
               type: 'Baseline Info',
-              description: 'Comparing against local baseline image',
+              description: 'Comparing against committed baseline screenshots',
             });
           }
           testInfo.annotations.push({
@@ -198,64 +190,39 @@ test.describe('Visual Regression Tests', () => {
         const screenshotTimestampUTC = new Date().toISOString();
         const screenshotTimestamp = toJST(screenshotTimestampUTC);
         
-        // ベースラインメタデータを読み込む（複数のパスを試す）
+        // ベースラインメタデータを読み込む（オプション、表示用）
         let baselineInfo: BaselineInfo | null = null;
-        const possiblePaths = [
-          path.join(__dirname, 'baseline-metadata.json'),
-          path.join(process.cwd(), 'tests', 'baseline-metadata.json'),
-          path.resolve('tests', 'baseline-metadata.json'),
-          'tests/baseline-metadata.json',
-        ];
-        
-        let metadataPath: string | null = null;
-        for (const tryPath of possiblePaths) {
-          console.log(`Trying to find baseline metadata at: ${tryPath}`);
-          if (fs.existsSync(tryPath)) {
-            metadataPath = tryPath;
-            console.log(`Found baseline metadata at: ${metadataPath}`);
-            break;
-          }
-        }
-        
-        if (metadataPath) {
+        const metadataPath = path.join(__dirname, 'baseline-metadata.json');
+        if (fs.existsSync(metadataPath)) {
           try {
             const metadataContent = fs.readFileSync(metadataPath, 'utf-8');
-            console.log(`Baseline metadata content: ${metadataContent}`);
             const metadata = JSON.parse(metadataContent);
             baselineInfo = {
               commit: metadata.commit || 'unknown',
               timestamp: metadata.timestamp || 'unknown',
               runId: metadata.run_id || 'unknown',
             };
-            console.log(`Baseline info loaded: ${JSON.stringify(baselineInfo)}`);
           } catch (e) {
             console.warn('Failed to read baseline metadata:', e);
           }
-        } else {
-          console.log('Baseline metadata file not found in any of the tried paths');
-          console.log(`Current working directory: ${process.cwd()}`);
-          console.log(`__dirname: ${__dirname}`);
         }
         
         // レポートにベースライン情報と現在のテスト情報を表示
         if (process.env.GITHUB_SHA) {
           const currentCommit = process.env.GITHUB_SHA.slice(0, 7);
           const branch = process.env.GITHUB_REF_NAME || 'unknown';
-          const isMainBranch = branch === 'main';
           
-          // ベースライン情報
-          if (baselineInfo) {
-            const baselineTimestampJST = baselineInfo.timestamp !== 'unknown' ? toJST(baselineInfo.timestamp) : 'unknown';
+          // ベースライン情報（固定baseline方式）
+          if (baselineInfo && baselineInfo.timestamp !== 'unknown') {
+            const baselineTimestampJST = toJST(baselineInfo.timestamp);
             testInfo.annotations.push({
               type: 'Baseline Info',
-              description: `Baseline from Commit: ${baselineInfo.commit} | Captured: ${baselineTimestampJST} | Run: ${baselineInfo.runId}`,
+              description: `Baseline from Commit: ${baselineInfo.commit} | Captured: ${baselineTimestampJST}`,
             });
           } else {
             testInfo.annotations.push({
               type: 'Baseline Info',
-              description: isMainBranch 
-                ? 'Creating new baseline (first run)'
-                : `Comparing against baseline from main branch (Commit: ${process.env.BASELINE_COMMIT || 'latest'})`,
+              description: 'Comparing against committed baseline screenshots (fixed baseline)',
             });
           }
           
@@ -265,16 +232,16 @@ test.describe('Visual Regression Tests', () => {
             description: `Test Commit: ${currentCommit} | Branch: ${branch} | Screenshot captured: ${screenshotTimestamp}`,
           });
         } else {
-          if (baselineInfo) {
-            const baselineTimestampJST = baselineInfo.timestamp !== 'unknown' ? toJST(baselineInfo.timestamp) : 'unknown';
+          if (baselineInfo && baselineInfo.timestamp !== 'unknown') {
+            const baselineTimestampJST = toJST(baselineInfo.timestamp);
             testInfo.annotations.push({
               type: 'Baseline Info',
-              description: `Baseline from ${baselineTimestampJST} (Run: ${baselineInfo.runId})`,
+              description: `Baseline from ${baselineTimestampJST}`,
             });
           } else {
             testInfo.annotations.push({
               type: 'Baseline Info',
-              description: 'Comparing against local baseline image',
+              description: 'Comparing against committed baseline screenshots',
             });
           }
           testInfo.annotations.push({
