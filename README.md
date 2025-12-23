@@ -7,8 +7,9 @@ MedicalDOCのE2Eテスト（Visual Regression Test）を実行するプロジェ
 このプロジェクトは、Playwrightを使用してMedicalDOCアプリケーションの視覚的回帰テストを自動実行します。
 
 - BacklogのwebhookをトリガーとしてGitHub Actionsでテストを実行
-- テスト結果をGitHub Pagesに公開
+- テスト結果をCloudflare Pagesに公開
 - Slackにテスト結果を通知
+- **固定baseline方式**: baselineスクリーンショットはGitにコミットされ、意図的な変更時のみ手動で更新
 
 ## セットアップ
 
@@ -95,15 +96,28 @@ npm run test:visual
 
 ### ベースラインスクリーンショットを更新
 
-```bash
-npm run test:update
-```
+**重要**: このプロジェクトでは、**固定baseline方式**を使用しています。
+baselineはGitにコミットされており、CIでは常にこの固定baselineと比較します。
 
-### Visual Regression Testのベースラインを更新
+baselineを更新するには、**ローカルで実行**してからGitにコミットしてください：
 
 ```bash
+# 1. ローカルでbaselineを更新
 npm run test:visual:update
+
+# 2. 更新されたbaselineを確認
+git status
+
+# 3. baselineをコミット・push
+git add tests/visual-regression.spec.ts-snapshots/
+git commit -m "Update baseline screenshots"
+git push origin main
 ```
+
+**注意**: 
+- baselineは「ある時点で人間が"これでよし"と決めた画像」として管理されます
+- CIでは自動的にbaselineを更新しません
+- 意図的な変更があった場合のみ、ローカルでbaselineを更新してコミットしてください
 
 ### テストレポートを表示
 
