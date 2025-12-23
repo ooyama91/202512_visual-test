@@ -92,12 +92,12 @@ test.describe('Visual Regression Tests', () => {
             testInfo.annotations.push({
               type: 'Baseline Info',
               description: `Baseline from ${baselineTimestampJST}`,
-            });
-          } else {
-            testInfo.annotations.push({
+          });
+        } else {
+          testInfo.annotations.push({
               type: 'Baseline Info',
               description: 'Comparing against committed baseline screenshots',
-            });
+          });
           }
           testInfo.annotations.push({
             type: 'Current Test',
@@ -185,7 +185,7 @@ test.describe('Visual Regression Tests', () => {
 
   // 要素単位のテスト
   testUrls.elements.forEach((elementConfig) => {
-      test(`${elementConfig.description}の見た目が変わっていないか`, async ({ page }, testInfo) => {
+    test(`${elementConfig.description}の見た目が変わっていないか`, async ({ page }, testInfo) => {
         // 画像取得時刻を記録（スクリーンショット撮影前、JSTで表示）
         const screenshotTimestampUTC = new Date().toISOString();
         const screenshotTimestamp = toJST(screenshotTimestampUTC);
@@ -207,28 +207,28 @@ test.describe('Visual Regression Tests', () => {
           }
         }
         
-        // レポートにベースライン情報と現在のテスト情報を表示
-        if (process.env.GITHUB_SHA) {
-          const currentCommit = process.env.GITHUB_SHA.slice(0, 7);
-          const branch = process.env.GITHUB_REF_NAME || 'unknown';
-          
+      // レポートにベースライン情報と現在のテスト情報を表示
+      if (process.env.GITHUB_SHA) {
+        const currentCommit = process.env.GITHUB_SHA.slice(0, 7);
+        const branch = process.env.GITHUB_REF_NAME || 'unknown';
+        
           // ベースライン情報（固定baseline方式）
           if (baselineInfo && baselineInfo.timestamp !== 'unknown') {
             const baselineTimestampJST = toJST(baselineInfo.timestamp);
-            testInfo.annotations.push({
-              type: 'Baseline Info',
-              description: `Baseline from Commit: ${baselineInfo.commit} | Captured: ${baselineTimestampJST}`,
-            });
-          } else {
-            testInfo.annotations.push({
-              type: 'Baseline Info',
-              description: 'Comparing against committed baseline screenshots (fixed baseline)',
-            });
-          }
-          
-          // 現在のテスト実行情報（画像取得時刻を使用）
           testInfo.annotations.push({
-            type: 'Current Test',
+            type: 'Baseline Info',
+              description: `Baseline from Commit: ${baselineInfo.commit} | Captured: ${baselineTimestampJST}`,
+          });
+        } else {
+          testInfo.annotations.push({
+            type: 'Baseline Info',
+              description: 'Comparing against committed baseline screenshots (fixed baseline)',
+          });
+        }
+        
+          // 現在のテスト実行情報（画像取得時刻を使用）
+        testInfo.annotations.push({
+          type: 'Current Test',
             description: `Test Commit: ${currentCommit} | Branch: ${branch} | Screenshot captured: ${screenshotTimestamp}`,
           });
         } else {
@@ -237,18 +237,18 @@ test.describe('Visual Regression Tests', () => {
             testInfo.annotations.push({
               type: 'Baseline Info',
               description: `Baseline from ${baselineTimestampJST}`,
-            });
-          } else {
-            testInfo.annotations.push({
+        });
+      } else {
+        testInfo.annotations.push({
               type: 'Baseline Info',
               description: 'Comparing against committed baseline screenshots',
-            });
+        });
           }
-          testInfo.annotations.push({
-            type: 'Current Test',
+        testInfo.annotations.push({
+          type: 'Current Test',
             description: `Screenshot captured: ${screenshotTimestamp}`,
-          });
-        }
+        });
+      }
 
       await page.goto(elementConfig.path, { waitUntil: 'load' });
       await page.waitForTimeout(1000);

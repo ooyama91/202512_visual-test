@@ -82,7 +82,7 @@ jobs:
           echo "Running visual regression tests against committed baseline screenshots"
           echo "Baseline screenshots are stored in Git at: tests/visual-regression.spec.ts-snapshots/"
           echo "To update baseline, run locally: npx playwright test --grep 'Visual Regression' --update-snapshots"
-          npx playwright test --grep "Visual Regression"
+            npx playwright test --grep "Visual Regression"
 
       - name: Upload test results
         if: always()
