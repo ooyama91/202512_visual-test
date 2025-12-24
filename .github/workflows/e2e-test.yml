@@ -148,6 +148,8 @@ jobs:
           projectName: ${{ secrets.CLOUDFLARE_PAGES_PROJECT_NAME }}
           directory: cloudflare-pages-report/
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          commitMessage: "Deploy test report - Run ID: ${{ github.run_id }} - Branch: ${{ steps.branch.outputs.BRANCH }}"
+          commitDirty: true
 
       - name: Send Slack notification
         if: always()
