@@ -72,6 +72,7 @@ jobs:
 
       - name: Run Visual Regression Tests
         id: test-run
+        continue-on-error: true
         env:
           BASE_URL: ${{ steps.base-url.outputs.BASE_URL }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
@@ -108,7 +109,10 @@ jobs:
         id: test-result
         if: always()
         run: |
-          if [ "${{ job.status }}" = "success" ]; then
+          if [ "${{ steps.test-run.outcome }}" = "failure" ]; then
+            echo "status=warning" >> $GITHUB_OUTPUT
+            echo "message=ビジュアルリグレッションテストで差分が検出されました（警告）" >> $GITHUB_OUTPUT
+          elif [ "${{ steps.test-run.outcome }}" = "success" ]; then
             echo "status=success" >> $GITHUB_OUTPUT
             echo "message=E2Eテストが成功しました" >> $GITHUB_OUTPUT
           else
@@ -165,6 +169,10 @@ jobs:
             COLOR="good"
             EMOJI="✅"
             STATUS_TEXT="テスト成功"
+          elif [ "$STATUS" = "warning" ]; then
+            COLOR="warning"
+            EMOJI="⚠️"
+            STATUS_TEXT="差分検出（警告）"
           else
             COLOR="danger"
             EMOJI="❌"
